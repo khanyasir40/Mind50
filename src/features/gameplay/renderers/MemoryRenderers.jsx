@@ -19,7 +19,6 @@ export const DigitSpanRenderer = ({ challenge, trialPhase, onRespond, isBackward
       let idx = 0;
       const speed = challenge.payload.speedMs || (challenge.payload.isHardMode ? 550 : 800);
 
-      // Start flashing after a brief 200ms setup
       const initialTimer = setTimeout(() => {
         setFlashIndex(0);
         idx = 1;
@@ -72,7 +71,6 @@ export const DigitSpanRenderer = ({ challenge, trialPhase, onRespond, isBackward
           <Eye size={16} /> {flashIndex >= 0 ? `Memorizing Digit ${flashIndex + 1} of ${digits.length}` : 'Get Ready...'}
         </div>
 
-        {/* Progress dots for digits */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginBottom: '24px' }}>
           {digits.map((_, i) => (
             <div
@@ -150,7 +148,6 @@ export const DigitSpanRenderer = ({ challenge, trialPhase, onRespond, isBackward
         {typed || <span style={{ color: 'var(--text-tertiary)', fontSize: '18px', letterSpacing: 'normal' }}>Tap numbers below...</span>}
       </div>
 
-      {/* 3×4 Full Keypad with 0, Clear, Backspace */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', maxWidth: '300px', margin: '0 auto' }}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
           <NvButton
@@ -163,7 +160,6 @@ export const DigitSpanRenderer = ({ challenge, trialPhase, onRespond, isBackward
           </NvButton>
         ))}
 
-        {/* Bottom row: Clear, 0, Backspace */}
         <NvButton
           variant="secondary"
           size="lg"
@@ -203,6 +199,283 @@ export const DigitSpanRenderer = ({ challenge, trialPhase, onRespond, isBackward
           </NvButton>
         </div>
       )}
+    </div>
+  );
+};
+
+// GAME 03: CORSI BLOCKS RENDERER
+export const CorsiBlocksRenderer = ({ challenge, trialPhase, onRespond }) => {
+  const sequence = challenge.payload.sequence || [];
+  const gridSize = challenge.payload.gridSize || 3;
+  const [activeStep, setActiveStep] = useState(null);
+  const [userSeq, setUserSeq] = useState([]);
+
+  useEffect(() => {
+    setUserSeq([]);
+    setActiveStep(null);
+    if (trialPhase === 'show') {
+      let step = 0;
+      const interval = setInterval(() => {
+        if (step < sequence.length) {
+          setActiveStep(sequence[step]);
+          step++;
+        } else {
+          clearInterval(interval);
+          setActiveStep(null);
+        }
+      }, challenge.payload.stepMs || 650);
+      return () => clearInterval(interval);
+    }
+  }, [challenge, trialPhase, sequence]);
+
+  const handleBlockClick = (idx) => {
+    if (trialPhase !== 'input') return;
+    const next = [...userSeq, idx];
+    setUserSeq(next);
+    if (next.length === sequence.length) {
+      onRespond({ userSequence: next });
+    }
+  };
+
+  return (
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 16px', background: 'var(--bg-pill)', color: 'var(--text-secondary)', borderRadius: 'var(--radius-full)', fontSize: '12px', fontWeight: '800', marginBottom: '20px' }}>
+        <Eye size={16} /> {trialPhase === 'show' ? 'Watch glowing blocks in sequence...' : `Repeat sequence (${userSeq.length}/${sequence.length}):`}
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+          gap: '12px',
+          maxWidth: '320px',
+          margin: '0 auto',
+        }}
+      >
+        {Array.from({ length: gridSize * gridSize }).map((_, idx) => {
+          const isFlashing = activeStep === idx;
+          const isSelected = userSeq.includes(idx);
+          return (
+            <button
+              key={idx}
+              disabled={trialPhase === 'show'}
+              onClick={() => handleBlockClick(idx)}
+              style={{
+                aspectRatio: '1',
+                borderRadius: 'var(--radius-lg)',
+                border: isFlashing ? '3px solid #FFF' : '2px solid var(--border-light)',
+                background: isFlashing
+                  ? 'var(--accent-primary)'
+                  : isSelected
+                  ? 'var(--color-success)'
+                  : 'var(--bg-surface)',
+                boxShadow: isFlashing ? '0 0 24px var(--accent-primary)' : 'none',
+                cursor: trialPhase === 'input' ? 'pointer' : 'default',
+                transition: 'all 0.15s ease',
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// GAME 04: SPATIAL SPAN RENDERER
+export const SpatialSpanRenderer = ({ challenge, trialPhase, onRespond }) => {
+  return <CorsiBlocksRenderer challenge={challenge} trialPhase={trialPhase} onRespond={onRespond} />;
+};
+
+// GAME 05: PICTURE RECALL RENDERER
+export const PictureRecallRenderer = ({ challenge, trialPhase, onRespond }) => {
+  const items = challenge.payload.items || [];
+  const options = challenge.payload.options || [];
+
+  if (trialPhase === 'show') {
+    return (
+      <div style={{ textAlign: 'center' }} className="animate-fade-in">
+        <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+          Memorize these pictures ({items.length} items):
+        </h3>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          {items.map((item, idx) => (
+            <div key={idx} style={{ padding: '20px', borderRadius: 'var(--radius-lg)', background: 'var(--bg-surface)', fontSize: '42px', border: '2px solid var(--border-light)' }}>
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+        Which item was in the scene?
+      </h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', maxWidth: '300px', margin: '0 auto' }}>
+        {options.map((opt, idx) => (
+          <NvButton key={idx} variant="secondary" size="lg" onClick={() => onRespond({ selectedOption: opt })}>
+            <span style={{ fontSize: '32px' }}>{opt}</span>
+          </NvButton>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// GAME 06: FACE NAME MEMORY RENDERER
+export const FaceNameMemoryRenderer = ({ challenge, trialPhase, onRespond }) => {
+  const pairs = challenge.payload.pairs || [];
+  const targetAvatar = challenge.payload.targetAvatar || '🧩';
+  const nameOptions = challenge.payload.nameOptions || [];
+
+  if (trialPhase === 'show') {
+    return (
+      <div style={{ textAlign: 'center' }} className="animate-fade-in">
+        <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+          Memorize Avatar Names:
+        </h3>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
+          {pairs.map((p, idx) => (
+            <div key={idx} style={{ padding: '16px', borderRadius: 'var(--radius-lg)', background: 'var(--bg-surface)', border: '2px solid var(--border-light)', minWidth: '110px' }}>
+              <div style={{ fontSize: '36px', marginBottom: '4px' }}>{p.avatar}</div>
+              <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent-primary)' }}>{p.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <div style={{ fontSize: '56px', marginBottom: '12px' }}>{targetAvatar}</div>
+      <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+        What was this avatar's name?
+      </h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', maxWidth: '320px', margin: '0 auto' }}>
+        {nameOptions.map((name, idx) => (
+          <NvButton key={idx} variant="secondary" size="lg" onClick={() => onRespond({ selectedName: name })}>
+            {name}
+          </NvButton>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// GAME 07: PAIRED ASSOCIATES RENDERER
+export const PairedAssociatesRenderer = ({ challenge, trialPhase, onRespond }) => {
+  return <FaceNameMemoryRenderer challenge={challenge} trialPhase={trialPhase} onRespond={onRespond} />;
+};
+
+// GAME 08: OBJECT LOCATION RENDERER
+export const ObjectLocationRenderer = ({ challenge, trialPhase, onRespond }) => {
+  const items = challenge.payload.items || [];
+  const targetItem = challenge.payload.targetItem || {};
+  const gridOptions = challenge.payload.gridOptions || [];
+
+  if (trialPhase === 'show') {
+    return (
+      <div style={{ textAlign: 'center' }} className="animate-fade-in">
+        <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+          Memorize Object Locations:
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxWidth: '280px', margin: '0 auto' }}>
+          {items.map((it, idx) => (
+            <div key={idx} style={{ padding: '16px', borderRadius: 'var(--radius-lg)', background: 'var(--bg-surface)', border: '2px solid var(--border-light)', fontSize: '32px' }}>
+              {it.symbol}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <div style={{ fontSize: '48px', marginBottom: '8px' }}>{targetItem.symbol}</div>
+      <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+        Where was this object located?
+      </h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxWidth: '280px', margin: '0 auto' }}>
+        {gridOptions.map((optIdx) => (
+          <NvButton key={optIdx} variant="secondary" size="lg" onClick={() => onRespond({ selectedIndex: optIdx })}>
+            Position {optIdx + 1}
+          </NvButton>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// GAME 09: VISUAL SEQUENCE REPRODUCTION RENDERER
+export const SequenceReproductionRenderer = ({ challenge, trialPhase, onRespond }) => {
+  return <CorsiBlocksRenderer challenge={challenge} trialPhase={trialPhase} onRespond={onRespond} />;
+};
+
+// GAME 10: VISUAL PATTERN MEMORY RENDERER
+export const VisualPatternMemoryRenderer = ({ challenge, trialPhase, onRespond }) => {
+  const targetGrid = challenge.payload.targetGrid || [];
+  const gridSize = challenge.payload.gridSize || 3;
+  const [userGrid, setUserGrid] = useState([]);
+
+  useEffect(() => {
+    setUserGrid([]);
+  }, [challenge]);
+
+  const toggleCell = (idx) => {
+    if (trialPhase !== 'input') return;
+    setUserGrid((prev) => (prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]));
+  };
+
+  if (trialPhase === 'show') {
+    return (
+      <div style={{ textAlign: 'center' }} className="animate-fade-in">
+        <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+          Memorize Shaded Grid Pattern:
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridSize}, 1fr)`, gap: '10px', maxWidth: '260px', margin: '0 auto' }}>
+          {Array.from({ length: gridSize * gridSize }).map((_, idx) => (
+            <div
+              key={idx}
+              style={{
+                aspectRatio: '1',
+                borderRadius: 'var(--radius-md)',
+                background: targetGrid.includes(idx) ? 'var(--accent-primary)' : 'var(--bg-surface)',
+                border: '2px solid var(--border-light)',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+        Recreate Shaded Grid Pattern:
+      </h3>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridSize}, 1fr)`, gap: '10px', maxWidth: '260px', margin: '0 auto 20px' }}>
+        {Array.from({ length: gridSize * gridSize }).map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => toggleCell(idx)}
+            style={{
+              aspectRatio: '1',
+              borderRadius: 'var(--radius-md)',
+              background: userGrid.includes(idx) ? 'var(--accent-primary)' : 'var(--bg-surface)',
+              border: '2px solid var(--border-light)',
+              cursor: 'pointer',
+            }}
+          />
+        ))}
+      </div>
+      <NvButton variant="primary" size="md" onClick={() => onRespond({ shadedIndices: userGrid })}>
+        Submit Pattern
+      </NvButton>
     </div>
   );
 };
