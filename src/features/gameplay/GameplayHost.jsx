@@ -157,7 +157,9 @@ export const GameplayHost = ({
   // Live Trial Countdown Timer Effect
   useEffect(() => {
     let timerId;
-    if (gameState === 'playing' && trialPhase === 'input' && challenge) {
+    const noTimeLimitGames = ['tower_of_hanoi', 'tower_of_london', 'maze_planning', 'wisconsin_card_sorting', 'logic_grid', 'planning_challenge', 'abstract_reasoning'];
+
+    if (gameState === 'playing' && trialPhase === 'input' && challenge && !noTimeLimitGames.includes(game.id) && challenge.payload.timeLimitMs !== null) {
       const limitMs = challenge.payload.timeLimitMs || challenge.payload.durationMs || (isHardMode ? 7000 : 12000);
       const startMs = Date.now();
 
@@ -189,7 +191,7 @@ export const GameplayHost = ({
     return () => {
       if (timerId) clearInterval(timerId);
     };
-  }, [gameState, trialPhase, challenge, currentTrial, totalTrials, isHardMode]);
+  }, [gameState, trialPhase, challenge, currentTrial, totalTrials, isHardMode, game.id]);
 
   const handleUserResponse = (sessionResultPayload) => {
     if (gameState !== 'playing' || isRespondingRef.current) return;

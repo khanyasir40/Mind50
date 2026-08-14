@@ -29,6 +29,7 @@ export const PlanningGames = {
         card,
         bins,
         activeRule,
+        timeLimitMs: null,
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -43,11 +44,11 @@ export const PlanningGames = {
         if (activeRule === 'COUNT') isCorrect = chosenBin.count === card.count;
       }
 
-      return { score: isCorrect ? 300 + challenge.difficulty * 30 : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 300 + challenge.difficulty * 30 : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
-  // GAME 22: TOWER OF LONDON — 8 randomized pre-defined valid puzzles
+  // GAME 22: TOWER OF LONDON — Pure Move-Based (No Timer)
   tower_of_london: {
     generateChallenge: (prng, difficulty) => {
       const puzzles = [
@@ -72,6 +73,7 @@ export const PlanningGames = {
         targetPegs: puzzle.target,
         minMoves: puzzle.minMoves,
         diskCount: puzzle.disks,
+        timeLimitMs: null,
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -84,7 +86,7 @@ export const PlanningGames = {
     },
   },
 
-  // GAME 23: TOWER OF HANOI
+  // GAME 23: TOWER OF HANOI — Pure Move-Based (No Timer)
   tower_of_hanoi: {
     generateChallenge: (prng, difficulty) => {
       const diskCount = 3 + (difficulty > 4 ? (difficulty > 7 ? 2 : 1) : 0);
@@ -92,7 +94,7 @@ export const PlanningGames = {
       return {
         diskCount,
         minMoves,
-        timeLimitMs: minMoves * 8000,
+        timeLimitMs: null,
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -109,100 +111,101 @@ export const PlanningGames = {
     },
   },
 
-  // GAME 24: RULE SWITCHING — enhanced with 3 distinct rule types
+  // GAME 24: RULE SWITCHING — 4 Dynamic Cues (PARITY, MAGNITUDE, COLOR, LOCATION)
   rule_switching: {
-    generateChallenge: (prng, difficulty) => {
-      const ruleTypes = [
-        {
-          cue: 'PARITY',
-          number: prng.nextRange(1, 99),
-          color: null,
-          instruction: 'Is the number ODD or EVEN?',
-          leftLabel: 'ODD',
-          rightLabel: 'EVEN',
-          getAnswer: (n) => n % 2 === 0 ? 'RIGHT' : 'LEFT',
-        },
-        {
-          cue: 'COLOR',
-          number: null,
-          color: prng.nextRange(0, 1) === 0 ? 'RED' : 'BLUE',
-          instruction: 'Which COLOR is shown?',
-          leftLabel: 'RED',
-          rightLabel: 'BLUE',
-          getAnswer: (_, c) => c === 'BLUE' ? 'RIGHT' : 'LEFT',
-        },
-        {
-          cue: 'SIZE',
-          number: prng.nextRange(1, 200),
-          color: null,
-          instruction: 'Is the number SMALL (<100) or LARGE (≥100)?',
-          leftLabel: 'SMALL',
-          rightLabel: 'LARGE',
-          getAnswer: (n) => n >= 100 ? 'RIGHT' : 'LEFT',
-        },
-      ];
+    generateChallenge: (prng, difficulty, isHardMode) => {
+      const number = prng.nextRange(1, 99);
+      const warmColors = ['#E85D75', '#F97316', '#F0A83A'];
+      const coolColors = ['#6C4DFF', '#39B982', '#06B6D4'];
+      const isWarm = prng.nextRange(0, 1) === 0;
+      const colorHex = isWarm
+        ? warmColors[prng.nextRange(0, warmColors.length - 1)]
+        : coolColors[prng.nextRange(0, coolColors.length - 1)];
 
-      const ruleIdx = difficulty > 5 ? prng.nextRange(0, ruleTypes.length - 1) : prng.nextRange(0, 1);
-      const rule = ruleTypes[ruleIdx];
-      const number = rule.number || prng.nextRange(1, 99);
-      const color = rule.color || 'RED';
-      const expectedAnswer = rule.getAnswer(number, color);
+      const isTop = prng.nextRange(0, 1) === 0;
+
+      const cues = ['PARITY', 'MAGNITUDE', 'COLOR', 'LOCATION'];
+      const activeCue = cues[prng.nextRange(0, cues.length - 1)];
+
+      let instruction = '';
+      let leftLabel = '';
+      let rightLabel = '';
+      let expectedAnswer = '';
+
+      if (activeCue === 'PARITY') {
+        instruction = 'Is the number ODD or EVEN?';
+        leftLabel = 'ODD';
+        rightLabel = 'EVEN';
+        expectedAnswer = number % 2 !== 0 ? 'LEFT' : 'RIGHT';
+      } else if (activeCue === 'MAGNITUDE') {
+        instruction = 'Is the number HIGH (> 50) or LOW (≤ 50)?';
+        leftLabel = 'LOW (≤ 50)';
+        rightLabel = 'HIGH (> 50)';
+        expectedAnswer = number > 50 ? 'RIGHT' : 'LEFT';
+      } else if (activeCue === 'COLOR') {
+        instruction = 'Is the number WARM (Red/Orange) or COOL (Blue/Green)?';
+        leftLabel = '🔴 WARM';
+        rightLabel = '🔵 COOL';
+        expectedAnswer = isWarm ? 'LEFT' : 'RIGHT';
+      } else {
+        instruction = 'Is the number at the TOP or BOTTOM?';
+        leftLabel = '⬆️ TOP';
+        rightLabel = '⬇️ BOTTOM';
+        expectedAnswer = isTop ? 'LEFT' : 'RIGHT';
+      }
 
       return {
-        cue: rule.cue,
+        cue: activeCue,
         number,
-        color,
-        instruction: rule.instruction,
-        leftLabel: rule.leftLabel,
-        rightLabel: rule.rightLabel,
+        colorHex,
+        isWarm,
+        isTop,
+        instruction,
+        leftLabel,
+        rightLabel,
         expectedAnswer,
+        timeLimitMs: Math.max(5000, (isHardMode ? 4500 : 7000) - difficulty * 150),
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.selectedSide === challenge.payload.expectedAnswer;
       const rtMs = sessionResult.reactionTimeMs || 2000;
       const speedBonus = isCorrect ? Math.max(0, 200 - Math.round(rtMs / 10)) : 0;
-      return { score: isCorrect ? 250 + challenge.difficulty * 30 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 250 + challenge.difficulty * 30 + speedBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
-  // GAME 25: DUAL TASK MULTITASKING
-  // FIX: math generator was prng.nextRange(1,1) which always equals 1 → replaced with proper random math
+  // GAME 25: DUAL TASK MULTITASKING — Web Audio Pitch Tone (No text answer spoil)
   dual_task: {
-    generateChallenge: (prng, difficulty) => {
-      const trackingTargetX = prng.nextRange(20, 80);
+    generateChallenge: (prng, difficulty, isHardMode) => {
+      const trackingTargetX = prng.nextRange(25, 75);
       const auditoryToneIsHigh = prng.nextRange(0, 1) === 1;
+      const frequencyHz = auditoryToneIsHigh ? 880 : 220; // 880Hz HIGH vs 220Hz LOW
       const driftSpeedPct = 2 + Math.min(difficulty, 5);
-
-      // Generate a real math question for higher difficulty
-      const hasMath = difficulty > 3;
-      const mathA = prng.nextRange(2, 9);
-      const mathB = prng.nextRange(2, 9);
-      const mathQuestion = hasMath
-        ? { q: `${mathA} × ${mathB}`, answer: mathA * mathB, type: 'math' }
-        : null;
 
       return {
         trackingTargetX,
         auditoryToneIsHigh,
+        frequencyHz,
         expectedToneResponse: auditoryToneIsHigh ? 'HIGH' : 'LOW',
         driftSpeedPct,
-        mathQuestion,
+        timeLimitMs: Math.max(5000, (isHardMode ? 5000 : 7500) - difficulty * 150),
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const trackingAccuracy = Math.max(0, Math.min(100, sessionResult.trackingAccuracy || 70));
       const toneCorrect = sessionResult.selectedTone === challenge.payload.expectedToneResponse;
+      const isCorrect = toneCorrect && trackingAccuracy > 50;
 
       const accuracy = Math.round((trackingAccuracy + (toneCorrect ? 100 : 0)) / 2);
-      const score = Math.round(accuracy * 4.5) + challenge.difficulty * 30;
-      return { score, accuracy };
+      const score = isCorrect ? Math.round(accuracy * 4.5) + challenge.difficulty * 30 : 0;
+      return { score, accuracy: isCorrect ? accuracy : 0, isCorrect };
     },
   },
 
-  // GAME 26: CATEGORY SEMANTIC SORTING — expanded pool
+  // GAME 26: CATEGORY SEMANTIC SORTING
   category_sorting: {
-    generateChallenge: (prng, difficulty) => {
+    generateChallenge: (prng, difficulty, isHardMode) => {
       const categories = [
         { name: 'Animal', items: ['Lion', 'Eagle', 'Dolphin', 'Tiger', 'Panda', 'Cobra', 'Elk', 'Crow'] },
         { name: 'Food', items: ['Apple', 'Pizza', 'Bread', 'Cheese', 'Mango', 'Pasta', 'Sushi', 'Steak'] },
@@ -211,7 +214,6 @@ export const PlanningGames = {
         { name: 'Sport', items: ['Tennis', 'Soccer', 'Boxing', 'Archery', 'Fencing', 'Rugby', 'Polo', 'Sumo'] },
       ];
 
-      // Harder difficulty uses more categories
       const catCount = difficulty > 6 ? 5 : difficulty > 3 ? 4 : 3;
       const selectedCats = prng.shuffle([...categories]).slice(0, catCount);
       const catIdx = prng.nextRange(0, selectedCats.length - 1);
@@ -222,25 +224,24 @@ export const PlanningGames = {
         item,
         correctCategory: category.name,
         options: prng.shuffle(selectedCats.map((c) => c.name)),
+        timeLimitMs: Math.max(5000, (isHardMode ? 4500 : 7000) - difficulty * 150),
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.selectedCategory === challenge.payload.correctCategory;
       const rtMs = sessionResult.reactionTimeMs || 2000;
       const speedBonus = isCorrect ? Math.max(0, 150 - Math.round(rtMs / 15)) : 0;
-      return { score: isCorrect ? 200 + challenge.difficulty * 25 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 200 + challenge.difficulty * 25 + speedBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
-  // GAME 27: LABYRINTH ROUTE PLANNING — with BFS solvability validation
-  // FIX: random walls could block the entire path; now BFS-validates and removes blocking walls
+  // GAME 27: LABYRINTH ROUTE PLANNING
   maze_planning: {
     generateChallenge: (prng, difficulty) => {
       const gridDim = difficulty > 5 ? 7 : difficulty > 2 ? 6 : 5;
       const start = { x: 0, y: 0 };
       const end = { x: gridDim - 1, y: gridDim - 1 };
 
-      // BFS to check if maze is solvable
       const isSolvable = (walls) => {
         const wallSet = new Set(walls);
         const visited = new Set();
@@ -248,50 +249,48 @@ export const PlanningGames = {
         const goal = `${gridDim - 1},${gridDim - 1}`;
         const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
         while (queue.length > 0) {
-          const cur = queue.shift();
-          if (cur === goal) return true;
-          if (visited.has(cur)) continue;
-          visited.add(cur);
-          const [cx, cy] = cur.split(',').map(Number);
+          const curr = queue.shift();
+          if (curr === goal) return true;
+          visited.add(curr);
+          const [cx, cy] = curr.split(',').map(Number);
           for (const [dx, dy] of dirs) {
-            const nx = cx + dx, ny = cy + dy;
+            const nx = cx + dx;
+            const ny = cy + dy;
             const key = `${nx},${ny}`;
-            if (nx >= 0 && ny >= 0 && nx < gridDim && ny < gridDim && !wallSet.has(key) && !visited.has(key)) {
+            if (nx >= 0 && nx < gridDim && ny >= 0 && ny < gridDim && !wallSet.has(key) && !visited.has(key)) {
               queue.push(key);
+              visited.add(key);
             }
           }
         }
         return false;
       };
 
-      // Generate walls, retry until maze is solvable
-      const wallCount = Math.floor(gridDim * difficulty * 0.4);
-      let wallSet = new Set();
-      for (let attempt = 0; attempt < 30; attempt++) {
-        const candidate = new Set();
-        for (let i = 0; i < wallCount; i++) {
+      let walls = [];
+      let minSteps = gridDim * 2 - 2;
+      let attempts = 0;
+      do {
+        const wallCount = Math.min(gridDim * 2, 4 + Math.floor(difficulty * 1.5));
+        const wallSet = new Set();
+        while (wallSet.size < wallCount) {
           const wx = prng.nextRange(0, gridDim - 1);
           const wy = prng.nextRange(0, gridDim - 1);
-          if (!(wx === 0 && wy === 0) && !(wx === gridDim - 1 && wy === gridDim - 1)) {
-            candidate.add(`${wx},${wy}`);
+          const key = `${wx},${wy}`;
+          if (key !== `0,0` && key !== `${gridDim - 1},${gridDim - 1}`) {
+            wallSet.add(key);
           }
         }
-        if (isSolvable(Array.from(candidate))) {
-          wallSet = candidate;
-          break;
-        }
-      }
-      // If still no valid maze, use empty walls (always solvable)
-      if (!isSolvable(Array.from(wallSet))) wallSet = new Set();
-
-      const minSteps = gridDim * 2 - 2;
+        walls = Array.from(wallSet);
+        attempts++;
+      } while (!isSolvable(walls) && attempts < 20);
 
       return {
         gridDim,
         start,
         end,
-        walls: Array.from(wallSet),
+        walls,
         minSteps,
+        timeLimitMs: null,
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -303,7 +302,7 @@ export const PlanningGames = {
     },
   },
 
-  // GAME 28: RESOURCE PLANNING — expanded task trees
+  // GAME 28: RESOURCE PLANNING
   planning_challenge: {
     generateChallenge: (prng, difficulty) => {
       const taskSets = [
@@ -326,30 +325,15 @@ export const PlanningGames = {
           ],
           validSequences: [['X', 'Y', 'Z', 'W', 'V'], ['X', 'Z', 'Y', 'W', 'V']],
         },
-        {
-          tasks: [
-            { id: '1', name: 'Phase 1', cost: 1, req: [] },
-            { id: '2', name: 'Phase 2', cost: 2, req: ['1'] },
-            { id: '3', name: 'Phase 3', cost: 2, req: ['1'] },
-            { id: '4', name: 'Phase 4', cost: 3, req: ['2', '3'] },
-            { id: '5', name: 'Phase 5', cost: 1, req: ['3'] },
-            { id: '6', name: 'Phase 6', cost: 4, req: ['4', '5'] },
-          ],
-          validSequences: [
-            ['1', '2', '3', '4', '5', '6'],
-            ['1', '3', '2', '4', '5', '6'],
-            ['1', '2', '3', '5', '4', '6'],
-            ['1', '3', '5', '2', '4', '6'],
-          ],
-        },
       ];
 
-      const setIdx = difficulty > 6 ? 2 : difficulty > 3 ? prng.nextRange(0, 1) : 0;
-      const chosen = taskSets[Math.min(setIdx, taskSets.length - 1)];
+      const setIdx = difficulty > 5 ? 1 : 0;
+      const chosen = taskSets[setIdx];
 
       return {
         tasks: chosen.tasks,
         validSequences: chosen.validSequences,
+        timeLimitMs: null,
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -357,57 +341,65 @@ export const PlanningGames = {
       const isMatch = challenge.payload.validSequences.some(
         (seq) => seq.join('') === userSeq.join('')
       );
-      return { score: isMatch ? 400 + challenge.difficulty * 40 : 0, accuracy: isMatch ? 100 : 0 };
+      return { score: isMatch ? 400 + challenge.difficulty * 40 : 0, accuracy: isMatch ? 100 : 0, isCorrect: isMatch };
     },
   },
 
-  // GAME 29: SERIAL SUBTRACTION SPEED — multi-step chains
-  // FIX: raised startValue floor so doubleStep never produces a negative/zero answer
+  // GAME 29: SERIAL SUBTRACTION SPEED — Dynamic Subtrahends (-3 to -9 Normal, -11 to -19 Hard) & Scaled Time Limits
   serial_subtraction: {
-    generateChallenge: (prng, difficulty) => {
-      const doubleStep = difficulty > 6;
-      const stepOptions = [3, 7, 13, 17];
-      const stepIdx = Math.min(Math.floor(difficulty / 2.5), stepOptions.length - 1);
-      const step = stepOptions[stepIdx];
+    generateChallenge: (prng, difficulty, isHardMode) => {
+      const normalSteps = [3, 4, 5, 6, 7, 8, 9];
+      const hardSteps = [11, 13, 14, 17, 19];
 
-      // Minimum start value: ensure two subtractions remain positive
-      const minStart = doubleStep ? step * 3 + 10 : step + 5;
-      const startValue = prng.nextRange(Math.max(minStart, 80), Math.max(minStart + 80, 200));
+      const step = isHardMode
+        ? hardSteps[prng.nextRange(0, hardSteps.length - 1)]
+        : normalSteps[prng.nextRange(0, normalSteps.length - 1)];
 
-      const expected1 = startValue - step;
-      const expected2 = expected1 - step;
+      const startValue = prng.nextRange(isHardMode ? 180 : 90, isHardMode ? 450 : 250);
+      const expected = startValue - step;
+
+      // 4 option choices (including expected answer)
+      const wrong1 = expected + 2;
+      const wrong2 = expected - 3;
+      const wrong3 = expected + 5;
+      const options = prng.shuffle([expected, wrong1, wrong2, wrong3]);
+
+      const timeLimitMs = isHardMode
+        ? Math.max(7000, 10000 - difficulty * 200)
+        : Math.max(5000, 7500 - difficulty * 200);
 
       return {
         startValue,
         step,
-        expected: doubleStep ? expected2 : expected1,
-        displayValue: doubleStep ? `${startValue} − ${step} − ${step}` : `${startValue} − ${step}`,
-        doubleStep,
+        expected,
+        displayValue: `${startValue} − ${step}`,
+        options,
+        timeLimitMs,
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const isCorrect = Number(sessionResult.userAnswer) === challenge.payload.expected;
+      const userVal = Number(sessionResult.userAnswer || sessionResult.userInput);
+      const isCorrect = userVal === challenge.payload.expected;
       const rtMs = sessionResult.reactionTimeMs || 4000;
       const speedBonus = isCorrect ? Math.max(0, 200 - Math.round(rtMs / 20)) : 0;
-      return { score: isCorrect ? 250 + challenge.difficulty * 30 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 250 + challenge.difficulty * 30 + speedBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
-  // GAME 30: BACKWARD COUNT SPRINT — varied step sizes
+  // GAME 30: BACKWARD COUNT SPRINT
   backward_counting: {
-    generateChallenge: (prng, difficulty) => {
-      const startOptions = [100, 200, 50, 300, 150];
+    generateChallenge: (prng, difficulty, isHardMode) => {
+      const startOptions = [100, 200, 150, 250, 300];
       const start = startOptions[prng.nextRange(0, startOptions.length - 1)];
-      const step = 3 + Math.min(difficulty, 5);
-      const seqLength = difficulty > 5 ? 5 : 4;
+      const step = isHardMode ? prng.nextRange(7, 13) : prng.nextRange(3, 6);
+      const seqLength = isHardMode ? 5 : 4;
       const expectedSeq = Array.from({ length: seqLength }, (_, i) => start - step * i);
       const nextValue = start - step * seqLength;
 
-      // Generate 3 wrong answers
       const wrongs = [
-        nextValue + step,      // Off by one step
-        nextValue - 1,         // Close but wrong
-        nextValue + prng.nextRange(2, 4), // Off by small amount
+        nextValue + step,
+        nextValue - 2,
+        nextValue + 4,
       ].filter(n => n !== nextValue);
 
       return {
@@ -416,13 +408,15 @@ export const PlanningGames = {
         expectedSeq,
         nextValue,
         options: prng.shuffle([nextValue, ...wrongs.slice(0, 3)]),
+        timeLimitMs: Math.max(5000, (isHardMode ? 5000 : 8000) - difficulty * 200),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const isCorrect = Number(sessionResult.userAnswer) === challenge.payload.nextValue;
+      const userVal = Number(sessionResult.userAnswer || sessionResult.userInput);
+      const isCorrect = userVal === challenge.payload.nextValue;
       const rtMs = sessionResult.reactionTimeMs || 3000;
       const speedBonus = isCorrect ? Math.max(0, 150 - Math.round(rtMs / 20)) : 0;
-      return { score: isCorrect ? 260 + challenge.difficulty * 30 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 260 + challenge.difficulty * 30 + speedBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 };

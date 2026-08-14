@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NvButton } from '../../../components/ui/NvButton';
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Volume2 } from 'lucide-react';
 
 // GAME 21: WISCONSIN CARD SORTING (Adaptive Rule Sorting)
 export const WisconsinCardRenderer = ({ challenge, onRespond }) => {
@@ -100,7 +100,7 @@ export const WisconsinCardRenderer = ({ challenge, onRespond }) => {
   );
 };
 
-// GAME 22 & 23: TOWER OF HANOI & TOWER OF LONDON
+// GAME 22 & 23: TOWER OF HANOI & TOWER OF LONDON (Pure Move-Based, No Timer)
 export const TowerRenderer = ({ challenge, onRespond }) => {
   const diskCount = challenge.payload.diskCount || 3;
   const minMoves = challenge.payload.minMoves || 7;
@@ -273,13 +273,13 @@ export const TowerRenderer = ({ challenge, onRespond }) => {
       </div>
 
       <p style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-        Tap source peg → then tap destination peg to move top disk.
+        Tap source peg → then tap destination peg to move top disk. (Move-Based, No Time Limit)
       </p>
     </div>
   );
 };
 
-// GAME 24: RULE SWITCHING — ENHANCED with 3 rule types
+// GAME 24: RULE SWITCHING — 4 Dynamic Cognitive Dimensions (Multi-Color)
 export const RuleSwitchingRenderer = ({ challenge, onRespond }) => {
   const startRef = useRef(Date.now());
 
@@ -287,26 +287,26 @@ export const RuleSwitchingRenderer = ({ challenge, onRespond }) => {
     startRef.current = Date.now();
   }, [challenge]);
 
+  const colorHex = challenge.payload.colorHex || '#6C4DFF';
+  const isTop = challenge.payload.isTop;
+
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ padding: '8px 20px', background: 'var(--accent-primary-light)', color: 'var(--accent-primary)', borderRadius: 'var(--radius-full)', display: 'inline-block', fontSize: '13px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '16px' }}>
-        CUE: {challenge.payload.cue}
+      <div style={{ padding: '8px 24px', background: 'var(--accent-primary)', color: '#FFF', borderRadius: 'var(--radius-full)', display: 'inline-block', fontSize: '14px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '16px', boxShadow: '0 4px 15px rgba(108,77,255,0.4)' }}>
+        ⚡ CUE: {challenge.payload.cue}
       </div>
-      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+      <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '16px' }}>
         {challenge.payload.instruction}
       </div>
 
-      {/* Display number or color */}
-      {challenge.payload.number && (
-        <div style={{ fontSize: '64px', fontWeight: '900', color: 'var(--accent-primary)', marginBottom: '24px', textShadow: '0 0 20px rgba(108,77,255,0.3)' }}>
+      {/* Spatial arena container for TOP/BOTTOM/COLOR location cues */}
+      <div style={{ height: '140px', display: 'flex', flexDirection: 'column', justifyContent: isTop ? 'flex-start' : 'flex-end', alignItems: 'center', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)', padding: '16px', marginBottom: '24px' }}>
+        <div style={{ fontSize: '64px', fontWeight: '900', color: colorHex, textShadow: `0 0 25px ${colorHex}88`, transition: 'all 0.2s ease' }}>
           {challenge.payload.number}
         </div>
-      )}
-      {challenge.payload.color && !challenge.payload.number && (
-        <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: challenge.payload.color === 'RED' ? '#E85D75' : '#6C4DFF', margin: '0 auto 24px', boxShadow: `0 0 30px ${challenge.payload.color === 'RED' ? '#E85D75' : '#6C4DFF'}88` }} />
-      )}
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '320px', margin: '0 auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '340px', margin: '0 auto' }}>
         <NvButton variant="secondary" size="lg" onClick={() => onRespond({ selectedSide: 'LEFT', reactionTimeMs: Date.now() - startRef.current })}>
           <ArrowLeft size={20} /> {challenge.payload.leftLabel}
         </NvButton>
@@ -318,26 +318,55 @@ export const RuleSwitchingRenderer = ({ challenge, onRespond }) => {
   );
 };
 
-// GAME 25: DUAL TASK MULTITASKING
+// GAME 25: DUAL TASK MULTITASKING — Web Audio Pitch Synthesizer (No Text Answers)
 export const DualTaskRenderer = ({ challenge, onRespond }) => {
   const [dotPosX, setDotPosX] = useState(50);
   const targetZoneMin = challenge.payload.trackingTargetX - 15;
   const targetZoneMax = challenge.payload.trackingTargetX + 15;
   const driftInterval = useRef(null);
+  const audioCtxRef = useRef(null);
+
+  // Play synthesized Web Audio pitch tone
+  const playPitchTone = (freq) => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq || challenge.payload.frequencyHz || 440, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     setDotPosX(50);
-    // Simulate dot drifting away from center
+    playPitchTone(challenge.payload.frequencyHz);
+
     const drift = challenge.payload.driftSpeedPct || 3;
     let dir = 1;
     driftInterval.current = setInterval(() => {
       setDotPosX(prev => {
         let next = prev + dir * drift * 0.3;
-        if (next > 90) { dir = -1; next = 90; }
-        if (next < 10) { dir = 1; next = 10; }
+        if (next > 88) { dir = -1; next = 88; }
+        if (next < 12) { dir = 1; next = 12; }
         return next;
       });
-    }, 200);
+    }, 150);
 
     return () => clearInterval(driftInterval.current);
   }, [challenge]);
@@ -356,10 +385,10 @@ export const DualTaskRenderer = ({ challenge, onRespond }) => {
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-        Task A: Keep the dot <strong style={{ color: 'var(--accent-primary)' }}>inside the green zone</strong> while answering the tone!
+        Task A: Keep the dot <strong style={{ color: 'var(--accent-primary)' }}>inside the green portal</strong> while listening!
       </div>
 
-      {/* Tracking Arena */}
+      {/* Visual Tracking Arena */}
       <div style={{ position: 'relative', height: '110px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)', overflow: 'hidden', marginBottom: '12px' }}>
         <div style={{ position: 'absolute', left: `${targetZoneMin}%`, width: '30%', height: '100%', background: 'rgba(57,185,130,0.15)', borderLeft: '2px solid var(--color-success)', borderRight: '2px solid var(--color-success)' }} />
         <div
@@ -368,11 +397,11 @@ export const DualTaskRenderer = ({ challenge, onRespond }) => {
             left: `${dotPosX}%`,
             top: '50%',
             transform: 'translate(-50%, -50%)',
-            width: '28px',
-            height: '28px',
+            width: '32px',
+            height: '32px',
             borderRadius: '50%',
             background: isCentered ? 'var(--color-success)' : 'var(--color-error)',
-            boxShadow: `0 0 16px ${isCentered ? 'rgba(57,185,130,0.6)' : 'rgba(232,93,117,0.6)'}`,
+            boxShadow: `0 0 20px ${isCentered ? 'rgba(57,185,130,0.6)' : 'rgba(232,93,117,0.6)'}`,
             transition: 'background 0.2s, box-shadow 0.2s',
           }}
         />
@@ -383,12 +412,19 @@ export const DualTaskRenderer = ({ challenge, onRespond }) => {
         <NvButton variant="secondary" size="sm" onClick={() => moveDot(18)}>Move Right ▶</NvButton>
       </div>
 
-      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '10px' }}>
-        Task B: What is the auditory pitch? ({challenge.payload.auditoryToneIsHigh ? '🔊 HIGH pitch' : '🔈 LOW pitch'})
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '12px' }}>
+        <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-primary)' }}>Task B: Auditory Pitch Listening</span>
+        <button
+          onClick={() => playPitchTone(challenge.payload.frequencyHz)}
+          style={{ padding: '6px 14px', background: 'var(--accent-primary-light)', border: 'none', borderRadius: 'var(--radius-full)', color: 'var(--accent-primary)', cursor: 'pointer', fontWeight: '700', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+        >
+          <Volume2 size={16} /> Replay Tone
+        </button>
       </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', maxWidth: '320px', margin: '0 auto' }}>
-        <NvButton variant="primary" size="lg" onClick={() => handleToneResponse('HIGH')}>HIGH Tone 🔊</NvButton>
-        <NvButton variant="primary" size="lg" onClick={() => handleToneResponse('LOW')}>LOW Tone 🔈</NvButton>
+        <NvButton variant="primary" size="lg" onClick={() => handleToneResponse('HIGH')}>HIGH Pitch (880Hz) 🔊</NvButton>
+        <NvButton variant="primary" size="lg" onClick={() => handleToneResponse('LOW')}>LOW Pitch (220Hz) 🔈</NvButton>
       </div>
     </div>
   );
@@ -424,7 +460,7 @@ export const CategorySortingRenderer = ({ challenge, onRespond }) => {
   );
 };
 
-// GAME 27: LABYRINTH ROUTE PLANNING — with wall obstacles
+// GAME 27: LABYRINTH ROUTE PLANNING
 export const MazePlanningRenderer = ({ challenge, onRespond }) => {
   const gridDim = challenge.payload.gridDim || 5;
   const walls = new Set(challenge.payload.walls || []);
@@ -524,7 +560,7 @@ export const MazePlanningRenderer = ({ challenge, onRespond }) => {
   );
 };
 
-// GAME 28: RESOURCE PLANNING — with dependency visualization
+// GAME 28: RESOURCE PLANNING
 export const PlanningChallengeRenderer = ({ challenge, onRespond }) => {
   const [userSeq, setUserSeq] = useState([]);
   const tasks = challenge.payload.tasks || [];
@@ -554,7 +590,6 @@ export const PlanningChallengeRenderer = ({ challenge, onRespond }) => {
       <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
         Arrange tasks in valid dependency order ({userSeq.join(' → ') || 'None yet'}):
       </div>
-      {/* Dependency hints */}
       <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '16px', background: 'var(--bg-surface)', padding: '8px 12px', borderRadius: 'var(--radius-md)', maxWidth: '380px', margin: '0 auto 16px', border: '1px solid var(--border-light)', textAlign: 'left' }}>
         {tasks.map(t => (
           <div key={t.id}>
@@ -585,7 +620,7 @@ export const PlanningChallengeRenderer = ({ challenge, onRespond }) => {
   );
 };
 
-// GAME 29 & 30: SERIAL SUBTRACTION & BACKWARD COUNTING — FIXED: no falsy-answer bug
+// GAME 29 & 30: SERIAL SUBTRACTION & BACKWARD COUNTING
 export const MathSequenceRenderer = ({ challenge, onRespond }) => {
   const startRef = useRef(Date.now());
 
@@ -593,24 +628,12 @@ export const MathSequenceRenderer = ({ challenge, onRespond }) => {
     startRef.current = Date.now();
   }, [challenge]);
 
-  // Determine which game this is: serial_subtraction has `expected`, backward_counting has `nextValue`
   const isSerialSub = challenge.payload.expected !== undefined && !challenge.payload.expectedSeq;
   const correctValue = isSerialSub ? challenge.payload.expected : challenge.payload.nextValue;
 
-  // Generate distinct answer options (handle 0 and negative correctly with explicit null check)
-  const options = challenge.payload.options
-    ? challenge.payload.options
-    : [
-        correctValue,
-        correctValue + (challenge.payload.step || 3),
-        correctValue - 1,
-        correctValue + (challenge.payload.step ? challenge.payload.step + 2 : 7),
-      ].map(n => Math.abs(n)); // Keep non-negative for display sanity
-
-  // Use the provided options if they exist (better)
   const displayOptions = challenge.payload.options
     ? challenge.payload.options
-    : [correctValue, correctValue + 3, correctValue - 5 > 0 ? correctValue - 5 : correctValue + 8, correctValue + 11];
+    : [correctValue, correctValue + 3, correctValue - 5, correctValue + 8];
 
   return (
     <div style={{ textAlign: 'center' }}>

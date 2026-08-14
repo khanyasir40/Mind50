@@ -33,7 +33,7 @@ export const AttentionGames = {
       const options = prng.shuffle([correctAnswer, ...wrongDistractors.slice(0, 3)]);
 
       return {
-        taskMode, // 'INK' or 'WORD'
+        taskMode,
         wordText: textItem.name,
         inkColorHex: inkItem.hex,
         correctInkName: inkItem.name,
@@ -41,7 +41,7 @@ export const AttentionGames = {
         correctAnswer,
         isIncongruent: textItem.name !== inkItem.name,
         options,
-        timeLimitMs: Math.max(1200, (isHardMode ? 2200 : 3800) - difficulty * 150),
+        timeLimitMs: Math.max(5000, (isHardMode ? 4000 : 7000) - difficulty * 150),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -124,7 +124,7 @@ export const AttentionGames = {
         points: prng.shuffle([...points]),
         expectedSequence: sequence,
         isPartB: true,
-        timeLimitMs: Math.max(6000, 22000 - difficulty * 1400),
+        timeLimitMs: Math.max(5000, 22000 - difficulty * 1400),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -137,7 +137,7 @@ export const AttentionGames = {
     },
   },
 
-  // GAME 14: GO / NO-GO RESPONSE — Dynamic Arcade GO/NO-GO Traps & Bonuses
+  // GAME 14: GO / NO-GO RESPONSE
   go_no_go: {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const isGo = prng.nextRange(0, 99) < (isHardMode ? 55 : 70);
@@ -158,12 +158,13 @@ export const AttentionGames = {
         ? goStimuli[prng.nextRange(0, goStimuli.length - 1)]
         : noGoStimuli[prng.nextRange(0, noGoStimuli.length - 1)];
 
-      const durationMs = Math.max(500, (isHardMode ? 850 : 1400) - difficulty * 80);
+      const durationMs = Math.max(1200, (isHardMode ? 1200 : 2500) - difficulty * 80);
 
       return {
         stimulus,
         durationMs,
         autoSubmitAfterMs: durationMs + 250,
+        timeLimitMs: Math.max(5000, (isHardMode ? 4000 : 6000)),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -176,7 +177,7 @@ export const AttentionGames = {
     },
   },
 
-  // GAME 15: ERIKSEN FLANKER — 4-Way Directions (Up/Down/Left/Right) & Position Targets (LEFT, CENTER, RIGHT)
+  // GAME 15: ERIKSEN FLANKER — 4-Way Directions & Position Targets
   flanker_task: {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const directions = ['left', 'right', 'up', 'down'];
@@ -196,7 +197,6 @@ export const AttentionGames = {
         ? directions[prng.nextRange(0, directions.length - 1)]
         : (prng.nextRange(0, 1) === 0 ? targetDir : directions.filter(d => d !== targetDir)[prng.nextRange(0, 2)]);
 
-      // Create 5 items: indices 0 (LEFT), 1, 2 (CENTER), 3, 4 (RIGHT)
       const items = Array.from({ length: 5 }, (_, idx) => {
         if (targetPos === 'LEFT' && idx === 0) return { dir: targetDir, symbol: theme.map[targetDir] };
         if (targetPos === 'CENTER' && idx === 2) return { dir: targetDir, symbol: theme.map[targetDir] };
@@ -209,12 +209,12 @@ export const AttentionGames = {
       return {
         items,
         theme: theme.name,
-        targetPosition: targetPos, // 'LEFT', 'CENTER', or 'RIGHT'
+        targetPosition: targetPos,
         targetDirection: targetDir,
         correctDirection: targetDir,
         displayString,
         isCongruent: targetDir === flankerDir,
-        timeLimitMs: Math.max(1200, (isHardMode ? 2200 : 3800) - difficulty * 110),
+        timeLimitMs: Math.max(5000, (isHardMode ? 4500 : 7500) - difficulty * 110),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -227,115 +227,97 @@ export const AttentionGames = {
     },
   },
 
-  // GAME 16: SIMON TASK
+  // GAME 16: SIMON TASK — Color Arcade with Location Distractors
   simon_task: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      // In hard mode, expand to 4 colors with 4 buttons
-      const targetColors = isHardMode
-        ? [
-            { name: 'Red', hex: '#E85D75', expectedButton: 'A' },
-            { name: 'Blue', hex: '#6C4DFF', expectedButton: 'B' },
-            { name: 'Green', hex: '#39B982', expectedButton: 'C' },
-            { name: 'Yellow', hex: '#F0A83A', expectedButton: 'D' },
-          ]
-        : [
-            { name: 'Red', hex: '#E85D75', expectedButton: 'LEFT' },
-            { name: 'Blue', hex: '#6C4DFF', expectedButton: 'RIGHT' },
-          ];
+      const targetColors = [
+        { name: 'Red', hex: '#E85D75', expectedButton: 'RED' },
+        { name: 'Blue', hex: '#6C4DFF', expectedButton: 'BLUE' },
+        { name: 'Green', hex: '#39B982', expectedButton: 'GREEN' },
+        { name: 'Yellow', hex: '#F0A83A', expectedButton: 'YELLOW' },
+      ];
 
-      const buttonOptions = isHardMode ? ['A', 'B', 'C', 'D'] : ['LEFT', 'RIGHT'];
-      const target = targetColors[prng.nextRange(0, targetColors.length - 1)];
-      const screenSide = isHardMode
-        ? ['LEFT', 'RIGHT', 'CENTER', 'FAR_RIGHT'][prng.nextRange(0, 3)]
-        : (prng.nextRange(0, 1) === 0 ? 'LEFT' : 'RIGHT');
+      const activeColors = isHardMode ? targetColors : targetColors.slice(0, 2);
+      const target = activeColors[prng.nextRange(0, activeColors.length - 1)];
+
+      const locations = ['TOP_LEFT', 'TOP_RIGHT', 'BOTTOM_LEFT', 'BOTTOM_RIGHT', 'CENTER'];
+      const screenSide = locations[prng.nextRange(0, locations.length - 1)];
 
       return {
         colorName: target.name,
         colorHex: target.hex,
         screenSide,
         expectedButton: target.expectedButton,
-        isCongruent: target.expectedButton === screenSide,
-        buttonOptions,
-        isHardMode,
+        isCongruent: false,
+        activeColors,
+        timeLimitMs: Math.max(5000, (isHardMode ? 4500 : 7500) - difficulty * 120),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const isCorrect = sessionResult.selectedButton === challenge.payload.expectedButton;
-      const incongruentBonus = !challenge.payload.isCongruent ? 50 : 0;
-      return { score: isCorrect ? 280 + challenge.difficulty * 35 + incongruentBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      const isCorrect = (sessionResult.selectedButton || sessionResult.selectedColor) === challenge.payload.expectedButton;
+      return { score: isCorrect ? 280 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
-  // GAME 17: VISUAL SEARCH
+  // GAME 17: VISUAL SEARCH MATRIX — Complete Rectangular Grid & Uniform Distractor Colors
   visual_search: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      // In hard mode: target is harder to distinguish (similar shape, different color)
-      const count = (isHardMode ? 24 : 12) + Math.min(difficulty * 3, 20);
+      const gridCols = isHardMode ? 5 : 4;
+      const rowCount = isHardMode ? 5 : 4;
+      const totalGridCount = gridCols * rowCount; // 16 items in 4x4, 25 items in 5x5 (NO missing tiles)
 
-      const targetSymbols = ['▲', '★', '◆', '●'];
-      const distractorGroups = [
-        ['△', '△', '△'], // open triangles (similar to ▲)
-        ['☆', '☆', '☆'], // open stars (similar to ★)
-        ['◇', '◇', '◇'], // open diamonds (similar to ◆)
-        ['◯', '◯', '◯'], // open circles (similar to ●)
-      ];
-
+      const targetSymbols = ['▲', '★', '◆', '●', '⬟', '✦'];
       const targetSymbolIdx = prng.nextRange(0, targetSymbols.length - 1);
-      const target = targetSymbols[targetSymbolIdx];
-      const distractorPool = isHardMode
-        ? distractorGroups[targetSymbolIdx]
-        : ['◯', '□', '△'];
+      const targetSymbol = targetSymbols[targetSymbolIdx];
 
-      const distractorCount = Math.max(1, count - 1);
-      const distractors = Array.from({ length: distractorCount }, () =>
-        distractorPool[prng.nextRange(0, distractorPool.length - 1)]
+      const distractorPools = ['△', '☆', '◇', '◯', '□', '◁', '▷'];
+      const distractors = Array.from({ length: totalGridCount - 1 }, () =>
+        distractorPools[prng.nextRange(0, distractorPools.length - 1)]
       );
 
-      // FIX: insert target at a known position BEFORE shuffling,
-      // then track that position through the shuffle — avoid indexOf() which
-      // can match a distractor that is the same symbol as target.
       const insertAt = prng.nextRange(0, distractors.length);
-      const rawItems = [...distractors.slice(0, insertAt), target, ...distractors.slice(insertAt)];
+      const rawItems = [...distractors.slice(0, insertAt), targetSymbol, ...distractors.slice(insertAt)];
 
-      // Shuffle while tracking target position
       const indices = rawItems.map((_, i) => i);
       const shuffledIndices = prng.shuffle(indices);
       const shuffled = shuffledIndices.map(i => rawItems[i]);
-      // targetIndex = position of the original insertAt index in shuffledIndices
       const targetIndex = shuffledIndices.indexOf(insertAt);
 
-      const colors = ['#6C4DFF', '#39B982', '#E85D75', '#F0A83A', '#06B6D4', '#A855F7', '#EC4899'];
+      // Uniform color set to prevent color-cheating
+      const uniformColor = '#6C4DFF';
+
       const items = shuffled.map((symbol) => ({
         symbol,
-        color: colors[prng.nextRange(0, colors.length - 1)],
-        rotation: prng.nextRange(0, 3) * 90,
+        color: uniformColor,
+        rotation: 0,
       }));
 
       return {
         items,
-        targetSymbol: target,
+        targetSymbol,
         targetIndex,
-        gridCols: isHardMode ? 6 : 4,
+        gridCols,
+        rowCount,
+        totalGridCount,
+        timeLimitMs: Math.max(5000, (isHardMode ? 5000 : 8000) - difficulty * 180),
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.selectedIndex === challenge.payload.targetIndex;
       const rtMs = sessionResult.reactionTimeMs || 2500;
-      const speedBonus = Math.max(0, 500 - Math.round(rtMs / 6));
-      return { score: isCorrect ? 350 + challenge.difficulty * 45 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      const speedBonus = isCorrect ? Math.max(0, 500 - Math.round(rtMs / 6)) : 0;
+      return { score: isCorrect ? 350 + challenge.difficulty * 45 + speedBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
   // GAME 18: CANCELLATION TASK
   cancellation_task: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const targetSymbol = '★';
-      // In hard mode, distractors include ☆ (open star) which looks similar
-      const distractorsPool = isHardMode
-        ? ['▲', '●', '■', '◆', '✦', '☆']
-        : ['▲', '●', '■', '◆', '✦'];
+      const targetSymbols = ['★', '◆', '▲', '●'];
+      const targetSymbol = targetSymbols[prng.nextRange(0, targetSymbols.length - 1)];
 
-      const totalGrid = isHardMode ? 42 : 28;
+      const distractorsPool = ['▲', '●', '■', '◆', '✦', '☆', '◇', '◯'].filter(s => s !== targetSymbol);
+      const totalGrid = isHardMode ? 35 : 24;
       const targetCount = (isHardMode ? 8 : 5) + Math.min(difficulty, 6);
 
       const items = [];
@@ -352,7 +334,7 @@ export const AttentionGames = {
         targetSymbol,
         gridItems: prng.shuffle(items),
         targetCount,
-        timeLimitMs: isHardMode ? 20000 : 30000,
+        timeLimitMs: Math.max(5000, isHardMode ? 20000 : 30000),
         gridCols: isHardMode ? 7 : 6,
       };
     },
@@ -374,58 +356,61 @@ export const AttentionGames = {
         (Math.max(0, correctHits - falsePositives) / challenge.payload.targetCount) * 100
       );
       const score = Math.max(0, correctHits * 130 - falsePositives * 70 + challenge.difficulty * 30);
-      return { score, accuracy };
+      return { score, accuracy, isCorrect: accuracy > 40 };
     },
   },
 
-  // GAME 19: CONTINUOUS PERFORMANCE — FIXED stream generation
+  // GAME 19: CONTINUOUS PERFORMANCE — Dynamic Target Pair Rules (A→X, 3→7, ◆→★, M→Z)
   continuous_performance: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
-      const letters = ['B', 'C', 'D', 'E', 'F', 'Y', 'Z', 'A', 'X'];
-      const streamLength = isHardMode ? 20 : 14;
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
+      const ruleSets = [
+        { triggerLetter: 'X', leadLetter: 'A', pool: ['B', 'C', 'D', 'E', 'F', 'Y', 'Z', 'A', 'X'] },
+        { triggerLetter: '7', leadLetter: '3', pool: ['1', '2', '4', '5', '6', '8', '9', '3', '7'] },
+        { triggerLetter: '★', leadLetter: '◆', pool: ['▲', '●', '■', '✦', '⬟', '◆', '★'] },
+        { triggerLetter: 'Z', leadLetter: 'M', pool: ['K', 'L', 'N', 'P', 'Q', 'R', 'M', 'Z'] },
+      ];
+
+      const activeRule = ruleSets[(trialIndex - 1) % ruleSets.length];
+      const streamLength = isHardMode ? 18 : 12;
       const stream = [];
 
-      // Guarantee at least 2-3 A→X triggers
       const targetSlots = new Set();
       const numTargets = isHardMode ? 4 : 3;
 
-      // Reserve slots for targets (need slot i and i-1, i >= 1)
       let attempts = 0;
       while (targetSlots.size < numTargets && attempts < 50) {
         const slot = prng.nextRange(2, streamLength - 1);
-        // Make sure it's not adjacent to another target
         if (!targetSlots.has(slot) && !targetSlots.has(slot - 1) && !targetSlots.has(slot + 1)) {
           targetSlots.add(slot);
         }
         attempts++;
       }
 
-      // Build stream
       for (let i = 0; i < streamLength; i++) {
         if (targetSlots.has(i)) {
-          // This position should be X, previous must be A
-          stream[i] = 'X';
-          if (stream[i - 1] !== 'A') stream[i - 1] = 'A';
+          stream[i] = activeRule.triggerLetter;
+          if (stream[i - 1] !== activeRule.leadLetter) stream[i - 1] = activeRule.leadLetter;
         } else if (!stream[i]) {
-          // Random non-target, non-A letter (unless we need A before X)
-          const nonTargetLetters = letters.filter(l => l !== 'X' && l !== 'A');
+          const nonTargetLetters = activeRule.pool.filter(l => l !== activeRule.triggerLetter && l !== activeRule.leadLetter);
           stream[i] = nonTargetLetters[prng.nextRange(0, nonTargetLetters.length - 1)];
         }
       }
 
-      // Fill any remaining undefined (from i-1 overwrites)
-      const nonTargetLetters = letters.filter(l => l !== 'X' && l !== 'A');
       for (let i = 0; i < streamLength; i++) {
         if (!stream[i]) {
+          const nonTargetLetters = activeRule.pool.filter(l => l !== activeRule.triggerLetter && l !== activeRule.leadLetter);
           stream[i] = nonTargetLetters[prng.nextRange(0, nonTargetLetters.length - 1)];
         }
       }
 
       return {
         stream,
+        leadLetter: activeRule.leadLetter,
+        triggerLetter: activeRule.triggerLetter,
         targetTriggerCount: targetSlots.size,
         targetIndices: Array.from(targetSlots),
-        intervalMs: Math.max(300, (isHardMode ? 450 : 800) - difficulty * 45),
+        intervalMs: Math.max(500, (isHardMode ? 500 : 900) - difficulty * 45),
+        timeLimitMs: Math.max(5000, (isHardMode ? 6000 : 9000)),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -445,37 +430,40 @@ export const AttentionGames = {
       const totalTargets = challenge.payload.targetTriggerCount || 1;
       const accuracy = Math.round((validHits / totalTargets) * 100);
       const score = Math.max(0, validHits * 250 - falseAlarms * 80 + challenge.difficulty * 35);
-      return { score, accuracy };
+      return { score, accuracy, isCorrect: accuracy > 40 };
     },
   },
 
-  // GAME 20: MULTIPLE OBJECT TRACKING
+  // GAME 20: MULTIPLE OBJECT TRACKING — Gentle Speed, 1 Target in Trial 1 for Normal Mode
   multiple_object_tracking: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
-      const totalObjects = isHardMode ? 9 : 6;
-      const targetCount = (isHardMode ? 4 : 2) + (difficulty > 5 ? 1 : 0);
-      const targetIds = new Set();
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
+      const totalObjects = isHardMode ? 8 : 6;
+      // Normal mode starts at 1 target sphere in trial 1!
+      const targetCount = isHardMode
+        ? (trialIndex > 5 ? 4 : 3)
+        : (trialIndex === 1 ? 1 : trialIndex > 6 ? 3 : 2);
 
+      const targetIds = new Set();
       while (targetIds.size < targetCount) {
         targetIds.add(prng.nextRange(0, totalObjects - 1));
       }
 
-      // Generate initial positions and velocities for animation
       const objects = Array.from({ length: totalObjects }, (_, idx) => ({
         id: idx,
         isTarget: targetIds.has(idx),
-        x: prng.nextRange(10, 90),
-        y: prng.nextRange(10, 90),
-        vx: (prng.nextRange(0, 1) === 0 ? 1 : -1) * prng.nextRange(2, 5) * (isHardMode ? 1.4 : 1),
-        vy: (prng.nextRange(0, 1) === 0 ? 1 : -1) * prng.nextRange(2, 5) * (isHardMode ? 1.4 : 1),
+        x: prng.nextRange(15, 85),
+        y: prng.nextRange(15, 85),
+        vx: (prng.nextRange(0, 1) === 0 ? 1 : -1) * (isHardMode ? prng.nextRange(2, 4) : prng.nextRange(1, 2)),
+        vy: (prng.nextRange(0, 1) === 0 ? 1 : -1) * (isHardMode ? prng.nextRange(2, 4) : prng.nextRange(1, 2)),
       }));
 
       return {
         totalObjects,
         objects,
         targetIds: Array.from(targetIds),
-        motionDurationMs: isHardMode ? 5500 : 4000,
-        highlightDurationMs: 2500,
+        motionDurationMs: isHardMode ? 5500 : 4500,
+        highlightDurationMs: 3000,
+        timeLimitMs: Math.max(5000, (isHardMode ? 6000 : 9000)),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -489,7 +477,7 @@ export const AttentionGames = {
 
       const accuracy = Math.round((hits / targets.length) * 100);
       const score = Math.max(0, hits * 250 - falseAlarms * 60 + challenge.difficulty * 50);
-      return { score, accuracy };
+      return { score, accuracy, isCorrect: accuracy > 40 };
     },
   },
 };
