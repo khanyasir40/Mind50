@@ -128,12 +128,10 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
         <NvPill active={activeTab === 'logs'} onClick={() => setActiveTab('logs')}>
           Audit Logs ({auditLogs.length})
         </NvPill>
-        {currentUser?.role === USER_ROLES.SUPER_ADMIN && (
-          <NvPill active={activeTab === 'creator'} onClick={() => setActiveTab('creator')}>
-            <Sparkles size={13} style={{ display: 'inline', marginRight: '4px' }} />
-            Creator Profile
-          </NvPill>
-        )}
+        <NvPill active={activeTab === 'creator'} onClick={() => setActiveTab('creator')}>
+          <Sparkles size={13} style={{ display: 'inline', marginRight: '4px' }} />
+          Social Links &amp; Profile
+        </NvPill>
       </div>
 
       {/* TAB 1: OVERVIEW */}
@@ -450,8 +448,8 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
         </NvCard>
       )}
 
-      {/* TAB 6: CREATOR PROFILE (Super Admin only) */}
-      {activeTab === 'creator' && currentUser?.role === USER_ROLES.SUPER_ADMIN && (
+      {/* TAB 6: SOCIAL MEDIA & CREATOR PROFILE */}
+      {activeTab === 'creator' && (
         <CreatorProfileEditor />
       )}
     </div>

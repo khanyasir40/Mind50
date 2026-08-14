@@ -61,12 +61,12 @@ export const MemoryGames = {
     },
   },
 
-  // GAME 03: CORSI BLOCK TAPPING
+  // GAME 03: CORSI BLOCK TAPPING — 800ms Buffer (No Cutoff)
   corsi_blocks: {
     generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
       const seqLen = isHardMode
-        ? Math.min(9, 5 + Math.floor((trialIndex - 1) / 3) + Math.min(difficulty, 2))
-        : Math.min(7, 2 + Math.floor((trialIndex - 1) / 2) + Math.min(difficulty, 2));
+        ? Math.min(8, 4 + Math.floor((trialIndex - 1) / 3) + Math.min(difficulty, 2))
+        : Math.min(6, 2 + Math.floor((trialIndex - 1) / 2) + Math.min(difficulty, 1));
       const gridSize = 9;
 
       const sequence = [];
@@ -78,7 +78,8 @@ export const MemoryGames = {
         sequence.push(next);
       }
 
-      const stepMs = Math.max(280, (isHardMode ? 450 : 750) - (trialIndex - 1) * 35 - difficulty * 25);
+      const stepMs = Math.max(500, (isHardMode ? 550 : 750) - (trialIndex - 1) * 20);
+      const totalDisplayMs = sequence.length * stepMs + 1000;
 
       return {
         sequence,
@@ -86,8 +87,8 @@ export const MemoryGames = {
         gridRows: 3,
         stepMs,
         displayStepMs: stepMs,
-        exposureMs: sequence.length * stepMs + 800,
-        displayDurationMs: sequence.length * stepMs + 800,
+        exposureMs: totalDisplayMs,
+        displayDurationMs: totalDisplayMs,
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -102,39 +103,38 @@ export const MemoryGames = {
     },
   },
 
-  // GAME 04: SPATIAL SPAN
+  // GAME 04: SPATIAL SPAN — Simultaneous Matrix Constellation Recall
   spatial_span: {
     generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
-      const seqLen = isHardMode
-        ? Math.min(9, 5 + Math.floor((trialIndex - 1) / 3) + Math.min(difficulty, 2))
-        : Math.min(7, 2 + Math.floor((trialIndex - 1) / 2) + Math.min(difficulty, 2));
+      const targetCount = isHardMode
+        ? Math.min(6, 3 + Math.floor((trialIndex - 1) / 3) + Math.min(difficulty, 2))
+        : Math.min(5, 1 + Math.floor((trialIndex - 1) / 2) + Math.min(difficulty, 1));
       const gridSize = 9;
 
-      const sequence = [];
-      for (let i = 0; i < seqLen; i++) {
-        let next;
-        do {
-          next = prng.nextRange(0, gridSize - 1);
-        } while (sequence.length > 0 && next === sequence[sequence.length - 1]);
-        sequence.push(next);
+      const targetIndices = [];
+      const used = new Set();
+      while (targetIndices.length < targetCount) {
+        const next = prng.nextRange(0, gridSize - 1);
+        if (!used.has(next)) {
+          used.add(next);
+          targetIndices.push(next);
+        }
       }
 
-      const stepMs = Math.max(280, (isHardMode ? 450 : 750) - (trialIndex - 1) * 35 - difficulty * 25);
+      const exposureMs = 3000;
 
       return {
-        sequence,
+        targetIndices,
         gridSize,
         gridRows: 3,
-        stepMs,
-        displayStepMs: stepMs,
-        exposureMs: sequence.length * stepMs + 800,
-        displayDurationMs: sequence.length * stepMs + 800,
+        exposureMs,
+        displayDurationMs: exposureMs,
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const expected = challenge.payload.sequence || [];
-      const got = sessionResult.userSequence || [];
-      const isCorrect = expected.length > 0 && expected.length === got.length && expected.every((val, i) => val === got[i]);
+      const expected = challenge.payload.targetIndices || [];
+      const got = sessionResult.tapIndices || sessionResult.userSequence || [];
+      const isCorrect = expected.length > 0 && expected.length === got.length && expected.every(val => got.includes(val));
       return {
         score: isCorrect ? Math.round(100 * 4 + challenge.difficulty * 40 + 200) : 0,
         accuracy: isCorrect ? 100 : 0,

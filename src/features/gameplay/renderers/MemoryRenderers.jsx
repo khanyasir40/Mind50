@@ -119,12 +119,12 @@ export const DigitSpanRenderer = ({ challenge, trialPhase, onRespond, isBackward
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GAME 03 & 04: CORSI BLOCKS / SPATIAL SPAN RENDERER
+// GAME 03: CORSI BLOCKS (Sequential Light Tapping)
 // ─────────────────────────────────────────────────────────────────────────────
 export const CorsiBlocksRenderer = ({ challenge, trialPhase, onRespond }) => {
   const sequence = challenge.payload.sequence || [];
   const gridSize = challenge.payload.gridSize || 9;
-  const gridDim = Math.round(Math.sqrt(gridSize)); // e.g. 3 for 9 cells
+  const gridDim = Math.round(Math.sqrt(gridSize));
   const [activeStep, setActiveStep] = useState(null);
   const [userSeq, setUserSeq] = useState([]);
 
@@ -133,8 +133,7 @@ export const CorsiBlocksRenderer = ({ challenge, trialPhase, onRespond }) => {
     setActiveStep(null);
     if (trialPhase === 'show') {
       let step = 0;
-      // Read stepMs (fixed alias), then fall back to displayStepMs or 650
-      const delay = challenge.payload.stepMs || challenge.payload.displayStepMs || 650;
+      const delay = challenge.payload.stepMs || 650;
       const interval = setInterval(() => {
         if (step < sequence.length) {
           setActiveStep(sequence[step]);
@@ -160,7 +159,7 @@ export const CorsiBlocksRenderer = ({ challenge, trialPhase, onRespond }) => {
   return (
     <div style={{ textAlign: 'center' }} className="animate-fade-in">
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 16px', background: 'var(--bg-pill)', color: 'var(--text-secondary)', borderRadius: 'var(--radius-full)', fontSize: '12px', fontWeight: '800', marginBottom: '20px' }}>
-        <Eye size={16} /> {trialPhase === 'show' ? 'Watch the flashing sequence...' : `Repeat (${userSeq.length}/${sequence.length}):`}
+        <Eye size={16} /> {trialPhase === 'show' ? 'Watch the sequence light up...' : `Tap sequence in order (${userSeq.length}/${sequence.length}):`}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridDim}, 1fr)`, gap: '12px', maxWidth: '320px', margin: '0 auto' }}>
@@ -181,10 +180,85 @@ export const CorsiBlocksRenderer = ({ challenge, trialPhase, onRespond }) => {
   );
 };
 
-// GAME 04: SPATIAL SPAN (reuses Corsi renderer — same engine format)
-export const SpatialSpanRenderer = ({ challenge, trialPhase, onRespond }) => (
-  <CorsiBlocksRenderer challenge={challenge} trialPhase={trialPhase} onRespond={onRespond} />
-);
+// ─────────────────────────────────────────────────────────────────────────────
+// GAME 04: SPATIAL SPAN (Simultaneous Matrix Location Recall)
+// ─────────────────────────────────────────────────────────────────────────────
+export const SpatialSpanRenderer = ({ challenge, trialPhase, onRespond }) => {
+  const targetIndices = challenge.payload.targetIndices || [];
+  const gridSize = challenge.payload.gridSize || 9;
+  const gridDim = Math.round(Math.sqrt(gridSize));
+  const [userTaps, setUserTaps] = useState([]);
+
+  useEffect(() => {
+    setUserTaps([]);
+  }, [challenge]);
+
+  const handleTileTap = (idx) => {
+    if (trialPhase !== 'input') return;
+    const next = [...userTaps];
+    const existingIdx = next.indexOf(idx);
+    if (existingIdx >= 0) {
+      next.splice(existingIdx, 1);
+    } else {
+      next.push(idx);
+    }
+    setUserTaps(next);
+  };
+
+  const handleSubmit = () => {
+    onRespond({ tapIndices: userTaps, userSequence: userTaps });
+  };
+
+  return (
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 16px', background: trialPhase === 'show' ? 'var(--accent-primary-light)' : 'var(--bg-pill)', color: trialPhase === 'show' ? 'var(--accent-primary)' : 'var(--text-secondary)', borderRadius: 'var(--radius-full)', fontSize: '12px', fontWeight: '800', marginBottom: '20px' }}>
+        <Eye size={16} /> {trialPhase === 'show' ? `Memorize ${targetIndices.length} glowing spatial gems!` : `Select all ${targetIndices.length} spatial gem locations (${userTaps.length}/${targetIndices.length}):`}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridDim}, 1fr)`, gap: '12px', maxWidth: '320px', margin: '0 auto 20px' }}>
+        {Array.from({ length: gridSize }).map((_, idx) => {
+          const isTargetGem = trialPhase === 'show' && targetIndices.includes(idx);
+          const isTapped = trialPhase === 'input' && userTaps.includes(idx);
+          return (
+            <button
+              key={idx}
+              disabled={trialPhase === 'show'}
+              onClick={() => handleTileTap(idx)}
+              style={{
+                aspectRatio: '1',
+                borderRadius: 'var(--radius-lg)',
+                border: isTargetGem ? '3px solid #FFF' : isTapped ? '2px solid var(--color-success)' : '2px solid var(--border-light)',
+                background: isTargetGem ? 'linear-gradient(135deg, #6C4DFF, #39B982)' : isTapped ? 'var(--color-success)' : 'var(--bg-surface)',
+                boxShadow: isTargetGem ? '0 0 20px rgba(108,77,255,0.6)' : 'none',
+                cursor: trialPhase === 'input' ? 'pointer' : 'default',
+                fontSize: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {isTargetGem && '💎'}
+              {isTapped && '✨'}
+            </button>
+          );
+        })}
+      </div>
+
+      {trialPhase === 'input' && (
+        <NvButton
+          variant="primary"
+          size="lg"
+          onClick={handleSubmit}
+          disabled={userTaps.length !== targetIndices.length}
+          style={{ width: '100%', maxWidth: '240px' }}
+        >
+          Submit Locations ({userTaps.length}/{targetIndices.length})
+        </NvButton>
+      )}
+    </div>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GAME 05: PICTURE SCENE RECALL
