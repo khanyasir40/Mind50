@@ -434,8 +434,8 @@ export const VisualSearchRenderer = ({ challenge, onRespond }) => {
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px', fontWeight: '800' }}>
-        Find the unique target symbol: <strong style={{ color: 'var(--accent-primary)', fontSize: '26px', marginLeft: '6px' }}>{challenge.payload.targetSymbol}</strong>
+      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '14px', fontWeight: '800' }}>
+        Scan the matrix &amp; tap the <strong style={{ color: 'var(--accent-primary)', fontSize: '16px' }}>UNIQUE symbol</strong> that appears ONLY ONCE!
       </div>
 
       <div

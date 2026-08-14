@@ -8,6 +8,7 @@ import { ServerScoringValidator } from '../game_engine/core/ServerScoringValidat
 const STORAGE_KEY_PREFIX = 'neurovault_user_state_';
 const GLOBAL_LEADERBOARD_KEY = 'neurovault_global_leaderboard_v1';
 const DISABLED_GAMES_KEY = 'mind50_disabled_games_v1';
+const ADMIN_GAME_CONFIGS_KEY = 'mind50_admin_game_configs_v2';
 
 export const getDisabledGames = () => {
   try {
@@ -33,6 +34,52 @@ export const setGameDisabledStatus = (gameId, isDisabled) => {
 export const isGameDisabled = (gameId) => {
   const disabledMap = getDisabledGames();
   return !!disabledMap[gameId];
+};
+
+export const getAdminGameConfigs = () => {
+  try {
+    const raw = localStorage.getItem(ADMIN_GAME_CONFIGS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const getSingleGameAdminConfig = (gameId) => {
+  const configs = getAdminGameConfigs();
+  const isDefaultDisabled = gameId === 'sequence_reproduction' || gameId === 'tower_of_london';
+  const disabledMap = getDisabledGames();
+
+  const defaultConfig = {
+    isActive: isDefaultDisabled ? false : !disabledMap[gameId],
+    totalTrials: 10,
+    hasTimer: !['tower_of_hanoi', 'tower_of_london', 'maze_planning', 'wisconsin_card_sorting', 'logic_grid', 'planning_challenge', 'abstract_reasoning'].includes(gameId),
+    timeLimitSeconds: 10,
+    difficultyMode: 'NORMAL',
+    memorizeTimeSeconds: 5,
+  };
+
+  return { ...defaultConfig, ...(configs[gameId] || {}) };
+};
+
+export const updateSingleGameAdminConfig = (gameId, newSettings) => {
+  const configs = getAdminGameConfigs();
+  const current = getSingleGameAdminConfig(gameId);
+  const updated = { ...current, ...newSettings };
+  configs[gameId] = updated;
+  localStorage.setItem(ADMIN_GAME_CONFIGS_KEY, JSON.stringify(configs));
+
+  setGameDisabledStatus(gameId, !updated.isActive);
+  window.dispatchEvent(new CustomEvent('mind50_admin_configs_changed', { detail: { gameId, updated } }));
+  return configs;
+};
+
+export const resetAllGameAdminConfigs = () => {
+  localStorage.removeItem(ADMIN_GAME_CONFIGS_KEY);
+  localStorage.removeItem(DISABLED_GAMES_KEY);
+  setGameDisabledStatus('sequence_reproduction', true);
+  setGameDisabledStatus('tower_of_london', true);
+  window.dispatchEvent(new CustomEvent('mind50_admin_configs_changed', { detail: {} }));
 };
 
 const defaultState = {

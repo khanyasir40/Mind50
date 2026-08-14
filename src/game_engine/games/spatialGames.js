@@ -1,274 +1,248 @@
 /* ==========================================================================
-   SPATIAL / VISUAL GAMES (37 - 42) ENGINE — FULLY ENHANCED
+   SPATIAL / VISUAL GAMES (37 - 42) ENGINE — FULLY ENHANCED & FIXED
    ========================================================================== */
 
 export const SpatialGames = {
-  // GAME 37: 3D MENTAL ROTATION — uses real asymmetric shape types
+  // GAME 37: 3D MENTAL ROTATION — 3D Isometric Polycube Voxel Engine
   mental_rotation: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const shapeTypes = ['L_BLOCK', 'Z_BLOCK', 'T_BLOCK', 'CORNER_BLOCK', 'F_SHAPE', 'L_SHAPE'];
-      const shapeType = shapeTypes[prng.nextRange(0, shapeTypes.length - 1)];
+      const polycubes = {
+        L_BLOCK: [[0,0,0], [0,0,1], [0,0,2], [1,0,0]],
+        Z_BLOCK: [[0,0,0], [1,0,0], [1,0,1], [2,0,1]],
+        T_BLOCK: [[0,0,0], [1,0,0], [2,0,0], [1,0,1]],
+        CORNER:  [[0,0,0], [1,0,0], [0,1,0], [0,0,1]],
+        SNAKE:   [[0,0,0], [1,0,0], [1,1,0], [1,1,1]],
+      };
 
-      const rotationAngles = [0, 45, 90, 135, 180, 225, 270, 315];
-      const targetRotation = rotationAngles[prng.nextRange(0, rotationAngles.length - 1)];
+      const keys = Object.keys(polycubes);
+      const chosenKey = keys[prng.nextRange(0, keys.length - 1)];
+      const baseVoxel = polycubes[chosenKey];
 
-      // One option is correct (same shape, different rotation — not mirror)
-      const correctAngle = rotationAngles[prng.nextRange(0, rotationAngles.length - 1)];
+      // Target 3D orientation
+      const targetRotX = prng.nextRange(0, 3);
+      const targetRotY = prng.nextRange(0, 3);
+      const targetRotZ = prng.nextRange(0, 3);
 
-      const optionCount = isHardMode ? 4 : 4;
+      // Correct option: rotated in 3D (same chiral parity, non-mirror)
+      const correctRotX = (targetRotX + prng.nextRange(1, 3)) % 4;
+      const correctRotY = (targetRotY + prng.nextRange(1, 3)) % 4;
+      const correctRotZ = (targetRotZ + prng.nextRange(0, 3)) % 4;
+
       const options = [];
 
-      // Add 1 correct option (non-mirror, different rotation)
-      options.push({ id: 1, rotation: correctAngle, isMirror: false, isCorrect: true });
+      // Option 1: True 3D rotation match (isCorrect = true, isMirror = false)
+      options.push({
+        id: 1,
+        rotX: correctRotX,
+        rotY: correctRotY,
+        rotZ: correctRotZ,
+        isMirror: false,
+        isCorrect: true,
+      });
 
-      // Add 2 incorrect rotations
-      const usedAngles = new Set([correctAngle]);
-      while (options.length < optionCount - 1) {
-        const angle = rotationAngles[prng.nextRange(0, rotationAngles.length - 1)];
-        if (!usedAngles.has(angle)) {
-          usedAngles.add(angle);
-          options.push({ id: options.length + 1, rotation: angle, isMirror: false, isCorrect: false });
-        }
-      }
+      // Option 2: Chiral mirror flip (always wrong)
+      options.push({
+        id: 2,
+        rotX: correctRotX,
+        rotY: (correctRotY + 1) % 4,
+        rotZ: correctRotZ,
+        isMirror: true,
+        isCorrect: false,
+      });
 
-      // Add 1 mirror option (always wrong, it IS a mirror)
-      options.push({ id: optionCount, rotation: prng.nextRange(0, 360), isMirror: true, isCorrect: false });
+      // Option 3: Different polycube shape
+      const otherKey = keys.filter(k => k !== chosenKey)[prng.nextRange(0, keys.length - 2)];
+      options.push({
+        id: 3,
+        otherShapeKey: otherKey,
+        rotX: prng.nextRange(0, 3),
+        rotY: prng.nextRange(0, 3),
+        rotZ: prng.nextRange(0, 3),
+        isMirror: false,
+        isCorrect: false,
+      });
+
+      // Option 4: Another chiral mirror flip
+      options.push({
+        id: 4,
+        rotX: (correctRotX + 2) % 4,
+        rotY: correctRotY,
+        rotZ: (correctRotZ + 1) % 4,
+        isMirror: true,
+        isCorrect: false,
+      });
 
       const shuffledOptions = prng.shuffle(options).map((o, i) => ({ ...o, id: i + 1 }));
       const correctId = shuffledOptions.find(o => o.isCorrect).id;
 
       return {
-        shapeType,
-        targetRotation,
+        shapeKey: chosenKey,
+        baseVoxel,
+        targetRotX,
+        targetRotY,
+        targetRotZ,
         options: shuffledOptions,
         correctOptionId: correctId,
+        timeLimitMs: Math.max(5000, (isHardMode ? 6000 : 9000) - difficulty * 200),
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.selectedId === challenge.payload.correctOptionId;
       const rtMs = sessionResult.reactionTimeMs || 4000;
       const speedBonus = isCorrect ? Math.max(0, 200 - Math.round(rtMs / 20)) : 0;
-      return { score: isCorrect ? 350 + challenge.difficulty * 45 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 350 + challenge.difficulty * 40 + speedBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
   // GAME 38: BLOCK DESIGN RECONSTRUCTION
   block_design: {
-    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
-      const tileTypes = ['SOLID_RED', 'SOLID_WHITE', 'SPLIT_DIAGONAL', 'SPLIT_ANTI_DIAGONAL'];
-      const dim = isHardMode ? 3 : (difficulty > 5 || trialIndex > 6 ? 3 : 2);
-      const totalCells = dim * dim;
+    generateChallenge: (prng, difficulty, isHardMode) => {
+      const gridSize = isHardMode ? 3 : 2;
+      const totalBlocks = gridSize * gridSize;
+      const blockStyles = ['SOLID_RED', 'SOLID_WHITE', 'SPLIT_DIAG_1', 'SPLIT_DIAG_2'];
 
-      const targetPattern = Array.from({ length: totalCells }, () => {
-        const tileIdx = Math.min(prng.nextRange(0, tileTypes.length - 1), difficulty > 4 || trialIndex > 4 ? 3 : 2);
-        return tileTypes[tileIdx];
-      });
-
-      const studyDurationMs = Math.max(1200, (isHardMode ? 2000 : 3500) - (trialIndex - 1) * 200);
+      const targetGrid = Array.from({ length: totalBlocks }, () =>
+        blockStyles[prng.nextRange(0, blockStyles.length - 1)]
+      );
 
       return {
-        dimension: dim,
-        targetPattern,
-        studyDurationMs,
-        exposureMs: studyDurationMs,
-        displayDurationMs: studyDurationMs,
+        gridSize,
+        targetGrid,
+        blockStyles,
+        exposureMs: isHardMode ? 5000 : 3000,
+        timeLimitMs: Math.max(5000, (isHardMode ? 7000 : 12000)),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const target = challenge.payload.targetPattern || [];
-      const user = sessionResult.userPattern || [];
+      const userGrid = sessionResult.userGrid || [];
+      const targetGrid = challenge.payload.targetGrid;
       let matches = 0;
+      targetGrid.forEach((val, idx) => { if (userGrid[idx] === val) matches++; });
 
-      for (let i = 0; i < target.length; i++) {
-        if (user[i] === target[i]) matches++;
-      }
-
-      const isCorrect = target.length > 0 && matches === target.length;
-      return { score: isCorrect ? Math.round(100 * 4 + challenge.difficulty * 35 + 200) : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
+      const accuracy = Math.round((matches / targetGrid.length) * 100);
+      const isCorrect = accuracy === 100;
+      return { score: isCorrect ? 400 + challenge.difficulty * 45 : 0, accuracy, isCorrect };
     },
   },
 
-  // GAME 39: MIRROR IMAGE IDENTIFICATION — FIXED: proper options structure
+  // GAME 39: MIRROR IMAGE IDENTIFICATION
   mirror_image: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const shapeTypes = ['F_SHAPE', 'L_SHAPE', 'P_SHAPE', 'L_BLOCK', 'Z_BLOCK', 'CORNER_BLOCK'];
-      const baseSvgType = shapeTypes[prng.nextRange(0, shapeTypes.length - 1)];
+      const shapes = ['F_SHAPE', 'L_SHAPE', 'P_SHAPE', 'Z_BLOCK', 'T_BLOCK'];
+      const targetShape = shapes[prng.nextRange(0, shapes.length - 1)];
 
-      const angles = [0, 45, 90, 135, 180, 225];
-      const usedAngles = new Set();
+      const options = [
+        { id: 1, isMirror: true, rotation: prng.nextRange(0, 3) * 90 },
+        { id: 2, isMirror: false, rotation: prng.nextRange(0, 3) * 90 },
+        { id: 3, isMirror: false, rotation: prng.nextRange(0, 3) * 90 },
+        { id: 4, isMirror: false, rotation: prng.nextRange(0, 3) * 90 },
+      ];
 
-      const options = [];
-
-      // 1 true mirror (correct)
-      const mirrorAngle = angles[prng.nextRange(0, angles.length - 1)];
-      usedAngles.add(mirrorAngle);
-      options.push({ id: 1, angle: mirrorAngle, isTrueMirror: true, isCorrect: true });
-
-      // 3 non-mirror rotations (incorrect)
-      while (options.length < 4) {
-        const angle = angles[prng.nextRange(0, angles.length - 1)];
-        if (!usedAngles.has(angle)) {
-          usedAngles.add(angle);
-          options.push({ id: options.length + 1, angle, isTrueMirror: false, isCorrect: false });
-        }
-      }
-
-      const shuffled = prng.shuffle(options).map((o, i) => ({ ...o, id: i + 1 }));
-      const correctId = shuffled.find(o => o.isCorrect).id;
+      const shuffledOptions = prng.shuffle(options).map((o, i) => ({ ...o, id: i + 1 }));
+      const correctOptionId = shuffledOptions.find(o => o.isMirror).id;
 
       return {
-        baseSvgType,
-        options: shuffled,
-        correctOptionId: correctId,
+        targetShape,
+        options: shuffledOptions,
+        correctOptionId,
+        timeLimitMs: Math.max(5000, (isHardMode ? 5000 : 8000) - difficulty * 150),
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.selectedId === challenge.payload.correctOptionId;
-      const rtMs = sessionResult.reactionTimeMs || 4000;
-      const speedBonus = isCorrect ? Math.max(0, 150 - Math.round(rtMs / 30)) : 0;
-      return { score: isCorrect ? 320 + challenge.difficulty * 40 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 300 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
-  // GAME 40: SPATIAL GRID ALIGNMENT — FIXED: actually populates dot grids
+  // GAME 40: SPATIAL GRID ALIGNMENT
   spatial_matching: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const gridMax = isHardMode ? 6 : 4;
-      const dotCount = (isHardMode ? 7 : 4) + Math.min(difficulty, 5);
-
-      const originalDots = [];
-      for (let i = 0; i < dotCount; i++) {
-        let x, y;
-        do {
-          x = prng.nextRange(1, gridMax);
-          y = prng.nextRange(1, gridMax);
-        } while (originalDots.some(d => d.x === x && d.y === y));
-        originalDots.push({ x, y });
-      }
-
-      // In hard mode, more dots match (subtle difference)
-      const isSame = prng.nextRange(0, 1) === 0;
-      let candidateDots;
-
-      if (isSame) {
-        candidateDots = [...originalDots];
-      } else {
-        // Change 1-2 dot positions
-        candidateDots = [...originalDots];
-        const changeCount = isHardMode ? 1 : 2;
-        for (let c = 0; c < changeCount; c++) {
-          const changeIdx = prng.nextRange(0, candidateDots.length - 1);
-          let nx, ny;
-          let tries = 0;
-          do {
-            nx = prng.nextRange(1, gridMax);
-            ny = prng.nextRange(1, gridMax);
-            tries++;
-          } while (tries < 20 && candidateDots.some((d, i) => i !== changeIdx && d.x === nx && d.y === ny));
-          candidateDots[changeIdx] = { x: nx, y: ny };
+      const dotCount = (isHardMode ? 5 : 3) + Math.min(difficulty, 3);
+      const dots = [];
+      const used = new Set();
+      while (dots.length < dotCount) {
+        const x = prng.nextRange(1, 5);
+        const y = prng.nextRange(1, 5);
+        const key = `${x},${y}`;
+        if (!used.has(key)) {
+          used.add(key);
+          dots.push({ x, y });
         }
       }
 
       return {
-        originalDots,
-        candidateDots,
-        isSame,
-        correctAnswer: isSame ? 'SAME' : 'DIFFERENT',
-        gridMax,
+        targetDots: dots,
+        timeLimitMs: Math.max(5000, (isHardMode ? 6000 : 9000)),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const isCorrect = sessionResult.selectedOption === challenge.payload.correctAnswer;
-      return { score: isCorrect ? 300 + challenge.difficulty * 40 : 0, accuracy: isCorrect ? 100 : 0 };
+      const userDots = sessionResult.userDots || [];
+      const targetDots = challenge.payload.targetDots;
+      let matches = 0;
+      targetDots.forEach(td => {
+        if (userDots.some(ud => ud.x === td.x && ud.y === td.y)) matches++;
+      });
+      const accuracy = Math.round((matches / targetDots.length) * 100);
+      const isCorrect = accuracy > 70;
+      return { score: isCorrect ? 320 + challenge.difficulty * 35 : 0, accuracy, isCorrect };
     },
   },
 
   // GAME 41: MAP ROUTE NAVIGATION
   map_navigation: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const directionPool = ['Left', 'Right', 'Straight'];
-      const routeLength = (isHardMode ? 7 : 4) + Math.min(difficulty, 5);
-
-      const routeSteps = Array.from({ length: routeLength }, () =>
-        directionPool[prng.nextRange(0, directionPool.length - 1)]
-      );
+      const turnsCount = (isHardMode ? 5 : 3) + Math.min(difficulty, 3);
+      const turns = ['LEFT', 'RIGHT', 'STRAIGHT'];
+      const route = Array.from({ length: turnsCount }, () => turns[prng.nextRange(0, turns.length - 1)]);
 
       return {
-        routeSteps,
-        studyDurationMs: Math.max(2500, 3000 + routeLength * 800 - difficulty * 200),
-        displayDurationMs: Math.max(2500, 3000 + routeLength * 800 - difficulty * 200),
-        exposureMs: Math.max(2500, 3000 + routeLength * 800 - difficulty * 200),
+        route,
+        studyDurationMs: isHardMode ? 5000 : 4000,
+        timeLimitMs: Math.max(5000, (isHardMode ? 6000 : 9000)),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const expected = challenge.payload.routeSteps;
-      const got = sessionResult.userSteps || [];
-      let hits = 0;
-      for (let i = 0; i < Math.min(expected.length, got.length); i++) {
-        if (expected[i] === got[i]) hits++;
-      }
-      const accuracy = expected.length > 0 ? Math.round((hits / expected.length) * 100) : 0;
-      return { score: Math.round(accuracy * 3.5 + challenge.difficulty * 35 + (accuracy === 100 ? 200 : 0)), accuracy };
+      const userSteps = sessionResult.userSteps || [];
+      const route = challenge.payload.route;
+      let matches = 0;
+      route.forEach((t, i) => { if (userSteps[i] === t) matches++; });
+      const accuracy = Math.round((matches / route.length) * 100);
+      const isCorrect = accuracy === 100;
+      return { score: isCorrect ? 350 + challenge.difficulty * 40 : 0, accuracy, isCorrect };
     },
   },
 
-  // GAME 42: CHANGE BLINDNESS — ENHANCED with randomized shapes, colors, sizes & change types
+  // GAME 42: CHANGE BLINDNESS SCENE
   change_blindness: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const shapeCount = isHardMode ? 6 : 4;
-      const shapes = ['★', '●', '■', '◆', '✦', '▲', '⬢', '⬟'];
-      const colors = ['#6C4DFF', '#39B982', '#E85D75', '#F0A83A', '#06B6D4', '#A855F7', '#EC4899'];
-
-      const positions = [
-        { x: 20, y: 25 }, { x: 55, y: 25 }, { x: 80, y: 25 },
-        { x: 20, y: 65 }, { x: 55, y: 65 }, { x: 80, y: 65 },
-      ];
-
-      const selectedPositions = prng.shuffle([...positions]).slice(0, shapeCount);
-      const shuffledShapes = prng.shuffle([...shapes]);
-      const shuffledColors = prng.shuffle([...colors]);
-
-      const sceneA = selectedPositions.map((pos, i) => ({
-        id: i + 1,
-        x: pos.x,
-        y: pos.y,
-        shape: shuffledShapes[i % shuffledShapes.length],
-        color: shuffledColors[i % shuffledColors.length],
-        size: prng.nextRange(28, 42),
+      const totalItems = isHardMode ? 8 : 5;
+      const changedIdx = prng.nextRange(0, totalItems - 1);
+      const items = Array.from({ length: totalItems }, (_, i) => ({
+        id: i,
+        shape: ['Circle', 'Square', 'Triangle', 'Star'][prng.nextRange(0, 3)],
+        color: ['#E85D75', '#6C4DFF', '#39B982', '#F0A83A'][prng.nextRange(0, 3)],
       }));
 
-      // sceneB: ONE item changes ONE attribute (shape, color, size, or position)
-      const changeIdx = prng.nextRange(0, sceneA.length - 1);
-      const changeType = prng.nextRange(0, 3); // 0: shape, 1: color, 2: size, 3: position
-
-      const sceneB = sceneA.map((item, i) => {
-        if (i === changeIdx) {
-          if (changeType === 0) {
-            const otherShapes = shapes.filter(s => s !== item.shape);
-            return { ...item, shape: otherShapes[prng.nextRange(0, otherShapes.length - 1)] };
-          } else if (changeType === 1) {
-            const otherColors = colors.filter(c => c !== item.color);
-            return { ...item, color: otherColors[prng.nextRange(0, otherColors.length - 1)] };
-          } else if (changeType === 2) {
-            return { ...item, size: item.size > 34 ? item.size - 14 : item.size + 14 };
-          } else {
-            return { ...item, x: item.x + (isHardMode ? 10 : 16) };
-          }
+      const modifiedItems = items.map((item, i) => {
+        if (i === changedIdx) {
+          return {
+            ...item,
+            color: item.color === '#E85D75' ? '#6C4DFF' : '#E85D75',
+          };
         }
-        return { ...item };
+        return item;
       });
 
       return {
-        sceneA,
-        sceneB,
-        changedItemId: sceneA[changeIdx].id,
+        items,
+        modifiedItems,
+        changedItemId: changedIdx,
+        timeLimitMs: Math.max(5000, (isHardMode ? 8000 : 12000)),
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.selectedItemId === challenge.payload.changedItemId;
-      const rtMs = sessionResult.reactionTimeMs || 6000;
-      const speedBonus = isCorrect ? Math.max(0, 200 - Math.round(rtMs / 30)) : 0;
-      return { score: isCorrect ? 350 + challenge.difficulty * 45 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 300 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 };

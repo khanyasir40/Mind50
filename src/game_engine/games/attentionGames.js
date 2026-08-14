@@ -259,31 +259,41 @@ export const AttentionGames = {
     },
   },
 
-  // GAME 17: VISUAL SEARCH MATRIX — Complete Rectangular Grid & Uniform Distractor Colors
+  // GAME 17: VISUAL SEARCH MATRIX — Balanced Mix of Filled & Outline Shapes (Uniqueness = 1)
   visual_search: {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const gridCols = isHardMode ? 5 : 4;
       const rowCount = isHardMode ? 5 : 4;
-      const totalGridCount = gridCols * rowCount; // 16 items in 4x4, 25 items in 5x5 (NO missing tiles)
+      const totalGridCount = gridCols * rowCount; // 16 items in 4x4, 25 items in 5x5
 
-      const targetSymbols = ['▲', '★', '◆', '●', '⬟', '✦'];
-      const targetSymbolIdx = prng.nextRange(0, targetSymbols.length - 1);
-      const targetSymbol = targetSymbols[targetSymbolIdx];
+      // Pool of both filled AND outline shapes
+      const allSymbols = ['✦', '✧', '▲', '△', '◆', '◇', '●', '◯', '★', '☆', '■', '□', '◁', '▷'];
+      
+      const targetSymbol = allSymbols[prng.nextRange(0, allSymbols.length - 1)];
+      const distractorPool = allSymbols.filter(s => s !== targetSymbol);
 
-      const distractorPools = ['△', '☆', '◇', '◯', '□', '◁', '▷'];
-      const distractors = Array.from({ length: totalGridCount - 1 }, () =>
-        distractorPools[prng.nextRange(0, distractorPools.length - 1)]
-      );
+      // Select 5-6 distractor shapes to repeat so each appears 2-4 times (frequency ≥ 2)
+      const numDistractorTypes = isHardMode ? 6 : 5;
+      const chosenDistractorTypes = prng.shuffle(distractorPool).slice(0, numDistractorTypes);
 
-      const insertAt = prng.nextRange(0, distractors.length);
-      const rawItems = [...distractors.slice(0, insertAt), targetSymbol, ...distractors.slice(insertAt)];
+      const distractors = [];
+      let typeIdx = 0;
+      while (distractors.length < totalGridCount - 1) {
+        distractors.push(chosenDistractorTypes[typeIdx % chosenDistractorTypes.length]);
+        typeIdx++;
+      }
+
+      // Shuffle distractors so their distribution is balanced
+      const shuffledDistractors = prng.shuffle(distractors);
+
+      const insertAt = prng.nextRange(0, shuffledDistractors.length);
+      const rawItems = [...shuffledDistractors.slice(0, insertAt), targetSymbol, ...shuffledDistractors.slice(insertAt)];
 
       const indices = rawItems.map((_, i) => i);
       const shuffledIndices = prng.shuffle(indices);
       const shuffled = shuffledIndices.map(i => rawItems[i]);
       const targetIndex = shuffledIndices.indexOf(insertAt);
 
-      // Uniform color set to prevent color-cheating
       const uniformColor = '#6C4DFF';
 
       const items = shuffled.map((symbol) => ({

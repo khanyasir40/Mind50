@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Pause, Play, Flame, Zap, Shield, Trophy, Clock } from 'lucide-react';
 import { ServerScoringValidator } from '../../game_engine/core/ServerScoringValidator';
 import { createGameChallenge, calculateGameScore } from '../../game_engine/core/GameEngine';
+import { getSingleGameAdminConfig } from '../../data/storage';
 import '../../game_engine/games'; // Register all 50 engines
 import { NvCard } from '../../components/ui/NvCard';
 import { NvButton } from '../../components/ui/NvButton';

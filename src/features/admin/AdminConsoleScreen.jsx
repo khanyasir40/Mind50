@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, Activity, ToggleLeft, ToggleRight, FileText, CheckCircle2, AlertTriangle, UserCheck, ShieldAlert, Award, Lock, Sparkles } from 'lucide-react';
+import { Shield, Users, Activity, ToggleLeft, ToggleRight, FileText, CheckCircle2, AlertTriangle, UserCheck, ShieldAlert, Award, Lock, Sparkles, Sliders, Clock, RotateCcw, Search } from 'lucide-react';
 import { AuthService, USER_ROLES } from '../../core/auth/AuthService';
-import { getLeaderboards, getDisabledGames, setGameDisabledStatus } from '../../data/storage';
+import { getLeaderboards, getDisabledGames, setGameDisabledStatus, getAdminGameConfigs, getSingleGameAdminConfig, updateSingleGameAdminConfig, resetAllGameAdminConfigs } from '../../data/storage';
 import { NvCard } from '../../components/ui/NvCard';
 import { NvPill } from '../../components/ui/NvPill';
 import { NvButton } from '../../components/ui/NvButton';
@@ -15,18 +15,26 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
   const [leaderboards, setLeaderboards] = useState([]);
 
   const [disabledMap, setDisabledMap] = useState(() => getDisabledGames());
+  const [adminConfigs, setAdminConfigs] = useState(() => getAdminGameConfigs());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
 
   const refreshData = () => {
     setAccounts(AuthService.getAccounts());
     setAuditLogs(AuthService.getAuditLogs());
     setLeaderboards(getLeaderboards());
     setDisabledMap(getDisabledGames());
+    setAdminConfigs(getAdminGameConfigs());
   };
 
   useEffect(() => {
     AuthService.initializeDefaults().then(() => {
       refreshData();
     });
+
+    const handleConfigChange = () => refreshData();
+    window.addEventListener('mind50_admin_configs_changed', handleConfigChange);
+    return () => window.removeEventListener('mind50_admin_configs_changed', handleConfigChange);
   }, []);
 
   const currentUser = session?.user;
@@ -66,12 +74,24 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
     }
   };
 
-  const toggleGame = (id) => {
-    const isCurrentlyEnabled = !disabledMap[id];
-    const updatedDisabledMap = setGameDisabledStatus(id, isCurrentlyEnabled);
-    setDisabledMap(updatedDisabledMap);
-    AuthService.logSecurityEvent('GAME_TOGGLED', `Admin ${currentUser.name} ${isCurrentlyEnabled ? 'disabled' : 'enabled'} game: ${id}`);
+  const handleUpdateGameConfig = (gameId, field, value) => {
+    updateSingleGameAdminConfig(gameId, { [field]: value });
+    refreshData();
+    AuthService.logSecurityEvent('ADMIN_CONFIG_UPDATED', `Admin ${currentUser.name} updated ${gameId}: ${field} = ${value}`);
   };
+
+  const handleResetDefaults = () => {
+    if (window.confirm('Reset all game configurations to platform defaults?')) {
+      resetAllGameAdminConfigs();
+      refreshData();
+    }
+  };
+
+  const filteredGames = gamesCatalog.filter((game) => {
+    const matchesSearch = game.name.toLowerCase().includes(searchQuery.toLowerCase()) || game.category.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCat = selectedCategory === 'ALL' || game.category.toUpperCase() === selectedCategory.toUpperCase();
+    return matchesSearch && matchesCat;
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }} className="animate-fade-in">
@@ -86,7 +106,7 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
           </span>
         </div>
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-          Platform metrics, user governance, anti-cheat validation & audit trails.
+          Real-time game control center, user governance, anti-cheat validation & system audit logs.
         </p>
       </header>
 
@@ -95,11 +115,12 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
         <NvPill active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
           Overview &amp; Metrics
         </NvPill>
+        <NvPill active={activeTab === 'games'} onClick={() => setActiveTab('games')}>
+          <Sliders size={14} style={{ display: 'inline', marginRight: '4px' }} />
+          Game Engine Controls (50)
+        </NvPill>
         <NvPill active={activeTab === 'users'} onClick={() => setActiveTab('users')}>
           User Accounts ({accounts.length})
-        </NvPill>
-        <NvPill active={activeTab === 'games'} onClick={() => setActiveTab('games')}>
-          Game Engine Flags (50)
         </NvPill>
         <NvPill active={activeTab === 'anti-cheat'} onClick={() => setActiveTab('anti-cheat')}>
           Anti-Cheat &amp; Leaderboard
@@ -128,7 +149,7 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
             <NvCard padding="20px">
               <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>CATALOG GAMES</span>
               <h3 style={{ fontSize: '32px', fontWeight: '800', color: 'var(--accent-primary)', margin: '4px 0' }}>50 / 50</h3>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-success)' }}>100% Audited Engines</span>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-success)' }}>Full Admin Control</span>
             </NvCard>
 
             <NvCard padding="20px">
@@ -140,12 +161,175 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
         </div>
       )}
 
-      {/* TAB 2: USER MANAGEMENT */}
+      {/* TAB 2: GAME ENGINE REAL-TIME CONTROLS (FULL ADMIN CONTROL) */}
+      {activeTab === 'games' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Controls Bar & Filters */}
+          <NvCard padding="16px">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sliders size={20} color="var(--accent-primary)" />
+                  <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
+                    Real-Time Game Governance & Configuration Panel
+                  </h3>
+                </div>
+                <NvButton variant="secondary" size="sm" onClick={handleResetDefaults}>
+                  <RotateCcw size={14} /> Reset Defaults
+                </NvButton>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Search Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-surface)', padding: '6px 14px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-light)', flex: 1, minWidth: '220px' }}>
+                  <Search size={16} color="var(--text-tertiary)" />
+                  <input
+                    type="text"
+                    placeholder="Search 50 games..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '13px', width: '100%', outline: 'none' }}
+                  />
+                </div>
+
+                {/* Category Filter Pills */}
+                {['ALL', 'MEMORY', 'ATTENTION', 'EXECUTIVE', 'SPEED', 'SPATIAL', 'REASONING'].map((cat) => (
+                  <NvPill key={cat} active={selectedCategory === cat} onClick={() => setSelectedCategory(cat)}>
+                    {cat}
+                  </NvPill>
+                ))}
+              </div>
+            </div>
+          </NvCard>
+
+          {/* 50 Games Admin Control Grid */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {filteredGames.map((game) => {
+              const cfg = getSingleGameAdminConfig(game.id);
+
+              return (
+                <NvCard key={game.id} padding="16px">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* Header Row */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {game.name}
+                          {!cfg.isActive && (
+                            <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'var(--color-error-bg)', color: 'var(--color-error)', fontWeight: '800' }}>
+                              DISABLED FOR PLAYERS
+                            </span>
+                          )}
+                        </h4>
+                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{game.category} • Default Difficulty {game.difficulty}</span>
+                      </div>
+
+                      {/* Active Toggle Switch */}
+                      <button
+                        onClick={() => handleUpdateGameConfig(game.id, 'isActive', !cfg.isActive)}
+                        style={{ fontSize: '13px', color: cfg.isActive ? 'var(--color-success)' : 'var(--color-error)', cursor: 'pointer', background: 'var(--bg-surface)', padding: '6px 14px', borderRadius: 'var(--radius-full)', border: `1px solid ${cfg.isActive ? 'var(--color-success)' : 'var(--color-error)'}`, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800' }}
+                      >
+                        {cfg.isActive ? <ToggleRight size={22} color="var(--color-success)" /> : <ToggleLeft size={22} color="var(--color-error)" />}
+                        {cfg.isActive ? 'ON FOR PLAYERS' : 'OFF FOR PLAYERS'}
+                      </button>
+                    </div>
+
+                    {/* Admin Game Configuration Parameters Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', background: 'var(--bg-surface)', padding: '12px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
+                      {/* Control 1: Total Trials */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)' }}>TOTAL TRIALS</label>
+                        <select
+                          value={cfg.totalTrials}
+                          onChange={(e) => handleUpdateGameConfig(game.id, 'totalTrials', Number(e.target.value))}
+                          style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', background: 'var(--bg-base)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '12px' }}
+                        >
+                          <option value={3}>3 Trials (Quick)</option>
+                          <option value={5}>5 Trials</option>
+                          <option value={10}>10 Trials (Standard)</option>
+                          <option value={15}>15 Trials</option>
+                          <option value={20}>20 Trials (Deep)</option>
+                        </select>
+                      </div>
+
+                      {/* Control 2: Timer Mode */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)' }}>COUNTDOWN TIMER</label>
+                        <select
+                          value={cfg.hasTimer ? 'YES' : 'NO'}
+                          onChange={(e) => handleUpdateGameConfig(game.id, 'hasTimer', e.target.value === 'YES')}
+                          style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', background: 'var(--bg-base)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '12px' }}
+                        >
+                          <option value="YES">⏱️ Timer ON</option>
+                          <option value="NO">🚫 Timer OFF (Unlimited)</option>
+                        </select>
+                      </div>
+
+                      {/* Control 3: Time Limit (Seconds) */}
+                      {cfg.hasTimer && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)' }}>TRIAL TIME LIMIT</label>
+                          <select
+                            value={cfg.timeLimitSeconds}
+                            onChange={(e) => handleUpdateGameConfig(game.id, 'timeLimitSeconds', Number(e.target.value))}
+                            style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', background: 'var(--bg-base)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '12px' }}
+                          >
+                            <option value={5}>5 Seconds (Strict Min)</option>
+                            <option value={8}>8 Seconds</option>
+                            <option value={10}>10 Seconds (Standard)</option>
+                            <option value={15}>15 Seconds (Comfortable)</option>
+                            <option value={20}>20 Seconds</option>
+                            <option value={30}>30 Seconds (Generous)</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Control 4: Difficulty Complexity Level */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)' }}>COMPLEXITY / DIFFICULTY</label>
+                        <select
+                          value={cfg.difficultyMode}
+                          onChange={(e) => handleUpdateGameConfig(game.id, 'difficultyMode', e.target.value)}
+                          style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', background: 'var(--bg-base)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '12px' }}
+                        >
+                          <option value="EASY">🟢 EASY (Slow &amp; Simple)</option>
+                          <option value="NORMAL">🔵 NORMAL (Standard)</option>
+                          <option value="HARD">🟠 HARD (Fast &amp; Complex)</option>
+                          <option value="PRO">🔴 PRO (Extreme Arcade)</option>
+                        </select>
+                      </div>
+
+                      {/* Control 5: Memorize Study Exposure Time */}
+                      {['digit_span_forward', 'digit_span_backward', 'corsi_blocks', 'spatial_span', 'picture_recall', 'face_name_memory', 'paired_associates', 'object_location', 'visual_pattern_memory', 'map_navigation', 'block_design'].includes(game.id) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)' }}>MEMORIZE STUDY TIME</label>
+                          <select
+                            value={cfg.memorizeTimeSeconds}
+                            onChange={(e) => handleUpdateGameConfig(game.id, 'memorizeTimeSeconds', Number(e.target.value))}
+                            style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', background: 'var(--bg-base)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '12px' }}
+                          >
+                            <option value={3}>3.0 Seconds (Fast)</option>
+                            <option value={5}>5.0 Seconds (Comfortable)</option>
+                            <option value={7}>7.0 Seconds (Generous)</option>
+                            <option value={10}>10.0 Seconds (Easy Study)</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </NvCard>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: USER MANAGEMENT */}
       {activeTab === 'users' && (
         <NvCard padding="0px">
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>User Accounts Governance</span>
-            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '600' }}>Manage roles & permissions</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '600' }}>Manage roles &amp; permissions</span>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -199,56 +383,6 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
               </tbody>
             </table>
           </div>
-        </NvCard>
-      )}
-
-      {/* TAB 3: GAME CATALOG FLAGS */}
-      {activeTab === 'games' && (
-        <NvCard padding="0px">
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Game Engine Feature Controls (50 Audited Games)</span>
-            <span style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: '700' }}>
-              {gamesCatalog.length - Object.keys(disabledMap).length} / {gamesCatalog.length} Games Active
-            </span>
-          </div>
-          {gamesCatalog.map((game, index) => {
-            const isEnabled = !disabledMap[game.id];
-            return (
-              <div
-                key={game.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '14px 20px',
-                  borderBottom: index < gamesCatalog.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                  opacity: isEnabled ? 1 : 0.6,
-                  background: isEnabled ? 'transparent' : 'var(--bg-surface-elevated)',
-                }}
-              >
-                <div>
-                  <h4 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {game.name}
-                    {!isEnabled && (
-                      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'var(--color-error-bg)', color: 'var(--color-error)', fontWeight: '800' }}>
-                        OFF FOR USERS
-                      </span>
-                    )}
-                  </h4>
-                  <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{game.category} • Difficulty {game.difficulty}</span>
-                </div>
-                <button
-                  onClick={() => toggleGame(game.id)}
-                  style={{ fontSize: '24px', color: isEnabled ? 'var(--color-success)' : 'var(--text-tertiary)', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <span style={{ fontSize: '12px', fontWeight: '800', color: isEnabled ? 'var(--color-success)' : 'var(--text-tertiary)' }}>
-                    {isEnabled ? 'ACTIVE' : 'DISABLED'}
-                  </span>
-                  {isEnabled ? <ToggleRight size={34} color="var(--color-success)" /> : <ToggleLeft size={34} color="var(--text-tertiary)" />}
-                </button>
-              </div>
-            );
-          })}
         </NvCard>
       )}
 
