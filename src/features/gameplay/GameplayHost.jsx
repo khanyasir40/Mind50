@@ -83,9 +83,10 @@ export const GameplayHost = ({
   onFinishGame,
   onClose,
 }) => {
-  const [gameState, setGameState] = useState('tutorial'); // 'tutorial', 'playing', 'paused', 'finished'
+  const [adminConfig, setAdminConfig] = useState(() => getSingleGameAdminConfig(game.id));
+  const [gameState, setGameState] = useState('tutorial');
   const [isHardMode, setIsHardMode] = useState(false);
-  const [totalTrials, setTotalTrials] = useState(10); // Default to 10 trials for deep replayability!
+  const [totalTrials, setTotalTrials] = useState(10);
   const [currentTrial, setCurrentTrial] = useState(1);
 
   const [score, setScore] = useState(0);
@@ -94,12 +95,11 @@ export const GameplayHost = ({
   const [elapsedMs, setElapsedMs] = useState(0);
   const [resultData, setResultData] = useState(null);
 
-  // Live Trial Countdown Timer (ms remaining for reaction/speed games)
   const [trialTimeLeftMs, setTrialTimeLeftMs] = useState(null);
 
   const [challenge, setChallenge] = useState(null);
-  const [trialPhase, setTrialPhase] = useState('show'); // 'show', 'input'
-  const [feedback, setFeedback] = useState(null); // 'correct', 'incorrect', 'timeout'
+  const [trialPhase, setTrialPhase] = useState('show');
+  const [feedback, setFeedback] = useState(null);
   const [reactionStartMs, setReactionStartMs] = useState(0);
 
   const seedRef = useRef(Date.now() + Math.floor(Math.random() * 10000));
@@ -108,7 +108,24 @@ export const GameplayHost = ({
   const scoreRef = useRef(0);
   const isRespondingRef = useRef(false);
 
-  const loadNextTrial = (trialIndex, hardModeActive = isHardMode) => {
+  // Sync Admin config on load or when admin configs change
+  useEffect(() => {
+    const updateConfig = () => {
+      const cfg = getSingleGameAdminConfig(game.id);
+      setAdminConfig(cfg);
+      setTotalTrials(cfg.totalTrials || 10);
+      const isHard = cfg.difficultyMode === 'HARD' || cfg.difficultyMode === 'PRO';
+      setIsHardMode(isHard);
+    };
+
+    updateConfig();
+
+    const handleConfigChange = () => updateConfig();
+    window.addEventListener('mind50_admin_configs_changed', handleConfigChange);
+    return () => window.removeEventListener('mind50_admin_configs_changed', handleConfigChange);
+  }, [game.id]);
+
+  const loadNextTrial = (trialIndex) => {
     isRespondingRef.current = false;
     if (phaseTimeoutRef.current) {
       clearTimeout(phaseTimeoutRef.current);
@@ -119,14 +136,34 @@ export const GameplayHost = ({
     setTrialPhase('show');
     setTrialTimeLeftMs(null);
 
+    const cfg = getSingleGameAdminConfig(game.id);
+    const hardActive = cfg.difficultyMode === 'HARD' || cfg.difficultyMode === 'PRO';
+    const effectiveDiff = cfg.difficultyMode === 'EASY' ? 1 : cfg.difficultyMode === 'NORMAL' ? 2 : cfg.difficultyMode === 'HARD' ? 4 : 6;
+
     const newSeed = seedRef.current + trialIndex * 1337;
-    const ch = createGameChallenge(game.id, newSeed, game.difficulty, hardModeActive, trialIndex);
+    const ch = createGameChallenge(game.id, newSeed, effectiveDiff, hardActive, trialIndex);
+
+    // Apply Admin timer override
+    if (!cfg.hasTimer) {
+      ch.payload.timeLimitMs = null;
+    } else if (cfg.timeLimitSeconds) {
+      ch.payload.timeLimitMs = cfg.timeLimitSeconds * 1000;
+    }
+
+    // Apply Admin memorize / exposure time override for memory games
+    if (cfg.memorizeTimeSeconds && (ch.payload.displayDurationMs || ch.payload.exposureMs || ch.payload.studyDurationMs)) {
+      const memorizeMs = cfg.memorizeTimeSeconds * 1000;
+      if (ch.payload.displayDurationMs) ch.payload.displayDurationMs = memorizeMs;
+      if (ch.payload.exposureMs) ch.payload.exposureMs = memorizeMs;
+      if (ch.payload.studyDurationMs) ch.payload.studyDurationMs = memorizeMs;
+    }
+
     setChallenge(ch);
     setReactionStartMs(Date.now());
 
     // Auto phase transition for memory/exposure games
     if (['digit_span_forward', 'digit_span_backward', 'corsi_blocks', 'spatial_span', 'picture_recall', 'face_name_memory', 'paired_associates', 'object_location', 'visual_pattern_memory', 'map_navigation', 'block_design'].includes(game.id)) {
-      const delay = ch.payload.displayDurationMs || ch.payload.exposureMs || ch.payload.studyDurationMs || 2500;
+      const delay = ch.payload.displayDurationMs || ch.payload.exposureMs || ch.payload.studyDurationMs || (cfg.memorizeTimeSeconds * 1000) || 2500;
       phaseTimeoutRef.current = setTimeout(() => {
         setTrialPhase('input');
         setReactionStartMs(Date.now());
@@ -140,8 +177,8 @@ export const GameplayHost = ({
     correctCountRef.current = 0;
     scoreRef.current = 0;
     isRespondingRef.current = false;
-    loadNextTrial(1, isHardMode);
-  }, [game.id, isHardMode]);
+    loadNextTrial(1);
+  }, [game.id]);
 
   // Main Session Elapsed Timer
   useEffect(() => {
@@ -158,10 +195,13 @@ export const GameplayHost = ({
   // Live Trial Countdown Timer Effect
   useEffect(() => {
     let timerId;
+    const cfg = getSingleGameAdminConfig(game.id);
     const noTimeLimitGames = ['tower_of_hanoi', 'tower_of_london', 'maze_planning', 'wisconsin_card_sorting', 'logic_grid', 'planning_challenge', 'abstract_reasoning'];
 
-    if (gameState === 'playing' && trialPhase === 'input' && challenge && !noTimeLimitGames.includes(game.id) && challenge.payload.timeLimitMs !== null) {
-      const limitMs = challenge.payload.timeLimitMs || challenge.payload.durationMs || (isHardMode ? 7000 : 12000);
+    const timerEnabled = cfg.hasTimer && !noTimeLimitGames.includes(game.id);
+
+    if (gameState === 'playing' && trialPhase === 'input' && challenge && timerEnabled) {
+      const limitMs = (cfg.timeLimitSeconds * 1000) || challenge.payload.timeLimitMs || challenge.payload.durationMs || (isHardMode ? 7000 : 12000);
       const startMs = Date.now();
 
       timerId = setInterval(() => {
@@ -177,7 +217,7 @@ export const GameplayHost = ({
             setTimeout(() => {
               if (currentTrial < totalTrials) {
                 setCurrentTrial(prev => prev + 1);
-                loadNextTrial(currentTrial + 1, isHardMode);
+                loadNextTrial(currentTrial + 1);
               } else {
                 completeGameSession();
               }
@@ -267,6 +307,39 @@ export const GameplayHost = ({
     setGameState('playing');
     setReactionStartMs(Date.now());
   };
+
+  if (adminConfig && !adminConfig.isActive) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1100,
+          background: 'var(--bg-base)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}
+        className="animate-fade-in"
+      >
+        <div style={{ textAlign: 'center', maxWidth: '440px', background: 'var(--bg-surface)', padding: '32px 24px', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--color-error-bg)', color: 'var(--color-error)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+            <Lock size={32} />
+          </div>
+          <h2 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '8px' }}>
+            Game Disabled by Administrator
+          </h2>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.6 }}>
+            This game has been turned OFF by the administrator. Please select another active game from the catalog!
+          </p>
+          <NvButton variant="primary" size="md" onClick={onClose} style={{ width: '100%' }}>
+            Back to Games Catalog
+          </NvButton>
+        </div>
+      </div>
+    );
+  }
 
   if (!challenge) return null;
 
