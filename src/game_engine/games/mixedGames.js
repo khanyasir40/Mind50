@@ -23,33 +23,35 @@ export const MixedGames = {
         { id: 'potion', name: 'Potion', icon: '🧪' },
         { id: 'crown', name: 'Crown', icon: '👑' },
         { id: 'lantern', name: 'Lantern', icon: '🪔' },
+        { id: 'skull', name: 'Skull', icon: '💀' },
+        { id: 'magnet', name: 'Magnet', icon: '🧲' },
+        { id: 'crystal', name: 'Crystal', icon: '🔮' },
+        { id: 'ring', name: 'Diamond Ring', icon: '💍' },
+        { id: 'shield', name: 'Shield', icon: '🛡️' },
+        { id: 'map', name: 'Treasure Map', icon: '🗺️' },
       ];
 
-      const gridItemCount = (isHardMode ? 10 : 6) + Math.min(difficulty, 4);
+      const gridItemCount = isHardMode ? 16 : 12;
       const selectedItems = prng.shuffle([...itemsPool]).slice(0, Math.min(gridItemCount, itemsPool.length));
 
-      // FIX: spread items across the canvas using a proper jittered grid
-      // Divide canvas into sectors and place one item per sector with random offset
-      const cols = 4;
+      const cols = 5;
       const rows = Math.ceil(selectedItems.length / cols);
-      const sectorW = 88 / cols;
-      const sectorH = 80 / rows;
+      const sectorW = 85 / cols;
+      const sectorH = 75 / rows;
 
       const sceneItems = selectedItems.map((item, idx) => {
         const col = idx % cols;
         const row = Math.floor(idx / cols);
-        // Random position within sector, with padding from edges
-        const x = 6 + col * sectorW + prng.nextRange(2, Math.max(3, sectorW - 6));
-        const y = 8 + row * sectorH + prng.nextRange(2, Math.max(3, sectorH - 6));
+        const x = 5 + col * sectorW + prng.nextRange(1, Math.max(2, sectorW - 5));
+        const y = 6 + row * sectorH + prng.nextRange(1, Math.max(2, sectorH - 5));
         return {
           ...item,
           x,
           y,
-          size: isHardMode ? 18 : 24, // Smaller = harder to find
+          size: isHardMode ? 18 : 22,
         };
       });
 
-      // Shuffle the final layout so target isn't always at the same sector
       const shuffledScene = prng.shuffle(sceneItems);
       const targetIdx = prng.nextRange(0, shuffledScene.length - 1);
       const target = shuffledScene[targetIdx];

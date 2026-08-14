@@ -212,23 +212,41 @@ export const SpatialGames = {
     },
   },
 
-  // GAME 42: CHANGE BLINDNESS SCENE
+  // GAME 42: CHANGE BLINDNESS SCENE — High-Complexity Flicker Paradigm
   change_blindness: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const totalItems = isHardMode ? 8 : 5;
-      const changedIdx = prng.nextRange(0, totalItems - 1);
+      const gridCols = isHardMode ? 4 : 3;
+      const totalItems = gridCols * gridCols; // 9 in Normal mode (3x3), 16 in Hard mode (4x4)
+
+      const iconsPool = ['💎', '🚀', '👑', '🔮', '⚡', '🎯', '🌟', '🛡️', '🧩', '🦁', '💡', '🏆', '🔥', '🍀', '🔑', '🎨'];
+      const colorsPool = ['#6C4DFF', '#E1306C', '#39B982', '#F0A83A', '#1DA1F2', '#A855F7', '#EC4899'];
+      const rotationsPool = [0, 90, 180, 270];
+
+      const shuffledIcons = prng.shuffle([...iconsPool]);
+
       const items = Array.from({ length: totalItems }, (_, i) => ({
         id: i,
-        shape: ['Circle', 'Square', 'Triangle', 'Star'][prng.nextRange(0, 3)],
-        color: ['#E85D75', '#6C4DFF', '#39B982', '#F0A83A'][prng.nextRange(0, 3)],
+        icon: shuffledIcons[i % shuffledIcons.length],
+        color: colorsPool[prng.nextRange(0, colorsPool.length - 1)],
+        rotation: rotationsPool[prng.nextRange(0, rotationsPool.length - 1)],
       }));
+
+      const changedIdx = prng.nextRange(0, totalItems - 1);
+      const changeTypes = ['COLOR_SHIFT', 'ICON_MORPH', 'ROTATION_FLIP'];
+      const chosenChangeType = changeTypes[prng.nextRange(0, changeTypes.length - 1)];
 
       const modifiedItems = items.map((item, i) => {
         if (i === changedIdx) {
-          return {
-            ...item,
-            color: item.color === '#E85D75' ? '#6C4DFF' : '#E85D75',
-          };
+          if (chosenChangeType === 'COLOR_SHIFT') {
+            const otherColors = colorsPool.filter(c => c !== item.color);
+            return { ...item, color: otherColors[prng.nextRange(0, otherColors.length - 1)] };
+          }
+          if (chosenChangeType === 'ICON_MORPH') {
+            const otherIcons = iconsPool.filter(ic => ic !== item.icon);
+            return { ...item, icon: otherIcons[prng.nextRange(0, otherIcons.length - 1)] };
+          }
+          const otherRots = rotationsPool.filter(r => r !== item.rotation);
+          return { ...item, rotation: otherRots[prng.nextRange(0, otherRots.length - 1)] };
         }
         return item;
       });
@@ -237,12 +255,17 @@ export const SpatialGames = {
         items,
         modifiedItems,
         changedItemId: changedIdx,
+        changeType: chosenChangeType,
+        gridCols,
+        totalItems,
         timeLimitMs: Math.max(5000, (isHardMode ? 8000 : 12000)),
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.selectedItemId === challenge.payload.changedItemId;
-      return { score: isCorrect ? 300 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
+      const rtMs = sessionResult.reactionTimeMs || 3000;
+      const speedBonus = isCorrect ? Math.max(0, 400 - Math.round(rtMs / 10)) : 0;
+      return { score: isCorrect ? 350 + challenge.difficulty * 45 + speedBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 };

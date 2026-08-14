@@ -335,37 +335,106 @@ export const MapNavigationRenderer = ({ challenge, trialPhase, onRespond }) => {
   );
 };
 
-// GAME 42: CHANGE BLINDNESS SCENE
+// GAME 42: CHANGE BLINDNESS SCENE — Rensink's Flicker Paradigm (Blank Mask + Multi-Attribute Matrix)
 export const ChangeBlindnessRenderer = ({ challenge, onRespond }) => {
   const items = challenge.payload.items || [];
   const modifiedItems = challenge.payload.modifiedItems || [];
+  const gridCols = challenge.payload.gridCols || 3;
+
   const [showModified, setShowModified] = useState(false);
+  const [isMasking, setIsMasking] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setShowModified(prev => !prev);
-    }, 600);
-    return () => clearInterval(interval);
+    let timeoutId;
+    let isSubscribed = true;
+
+    const cyclePhase = (showingMod) => {
+      // Step 1: Show Scene A or B for 550ms
+      setIsMasking(false);
+      timeoutId = setTimeout(() => {
+        if (!isSubscribed) return;
+        // Step 2: Show Blank Mask for 120ms
+        setIsMasking(true);
+        timeoutId = setTimeout(() => {
+          if (!isSubscribed) return;
+          const nextMod = !showingMod;
+          setShowModified(nextMod);
+          cyclePhase(nextMod);
+        }, 120);
+      }, 550);
+    };
+
+    cyclePhase(showModified);
+
+    return () => {
+      isSubscribed = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [challenge]);
 
   const activeItems = showModified ? modifiedItems : items;
 
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-        Tap the item that is <strong style={{ color: 'var(--accent-primary)' }}>CHANGING COLOR</strong> between flashes!
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '14px', fontWeight: '800' }}>
+        Tap the object that is <strong style={{ color: 'var(--accent-primary)', fontSize: '15px' }}>CHANGING</strong> between blank flashes!
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', maxWidth: '340px', margin: '0 auto' }}>
-        {activeItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onRespond({ selectedItemId: item.id })}
-            style={{ aspectRatio: '1', borderRadius: 'var(--radius-lg)', border: `3px solid ${item.color}`, background: 'var(--bg-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', transition: 'all 0.1s' }}
+      <div style={{ position: 'relative', maxWidth: '380px', margin: '0 auto' }}>
+        {/* Blank Flicker Mask Overlay */}
+        {isMasking && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 10,
+              background: 'var(--bg-surface-elevated)',
+              borderRadius: 'var(--radius-xl)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid var(--border-light)',
+            }}
           >
-            {item.shape === 'Circle' ? '●' : item.shape === 'Square' ? '■' : item.shape === 'Triangle' ? '▲' : '★'}
-          </button>
-        ))}
+            <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-tertiary)', letterSpacing: '1px' }}>FLICKER MASK</div>
+          </div>
+        )}
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
+            gap: '10px',
+            background: 'var(--bg-surface)',
+            padding: '12px',
+            borderRadius: 'var(--radius-xl)',
+            border: '2px solid var(--border-light)',
+          }}
+        >
+          {activeItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onRespond({ selectedItemId: item.id })}
+              style={{
+                aspectRatio: '1',
+                borderRadius: 'var(--radius-lg)',
+                border: `2px solid ${item.color}`,
+                background: `${item.color}15`,
+                boxShadow: `0 0 12px ${item.color}33`,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: gridCols === 4 ? '22px' : '28px',
+                transition: 'transform 0.15s ease',
+              }}
+            >
+              <span style={{ transform: `rotate(${item.rotation || 0}deg)`, display: 'inline-block', transition: 'transform 0.15s ease' }}>
+                {item.icon}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
