@@ -51,7 +51,7 @@ export const ProfileScreen = ({
         </span>
 
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-          {activeUser.email || 'player@mind50.com'} • Joined {new Date(user.joinedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+          {activeUser.email || 'player@mind40.com'} • Joined {new Date(user.joinedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
         </p>
 
         {/* Level XP Progress Bar */}
@@ -79,15 +79,23 @@ export const ProfileScreen = ({
           </div>
         </div>
 
-        {session ? (
-          <NvButton variant="secondary" size="md" onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <LogOut size={16} /> Sign Out
-          </NvButton>
-        ) : (
-          <NvButton variant="primary" size="md" onClick={onOpenAuthModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <Key size={16} /> Sign In / Register
-          </NvButton>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {(activeUser.role === 'SUPER_ADMIN' || activeUser.role === 'ADMIN') && (
+            <NvButton variant="primary" size="md" onClick={() => onNavigateTab('admin')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #6C4DFF, #e85d75)' }}>
+              <ShieldCheck size={16} /> Open Admin Console
+            </NvButton>
+          )}
+
+          {session ? (
+            <NvButton variant="secondary" size="md" onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <LogOut size={16} /> Sign Out
+            </NvButton>
+          ) : (
+            <NvButton variant="primary" size="md" onClick={onOpenAuthModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Key size={16} /> Sign In / Register
+            </NvButton>
+          )}
+        </div>
       </NvCard>
 
       {/* Cognitive Skills Breakdown */}

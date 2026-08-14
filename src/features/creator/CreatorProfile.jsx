@@ -12,7 +12,7 @@ const CREATOR_KEY = 'mind50_creator_profile_v2';
 
 const defaultCreator = {
   name: 'Yasir Khan',
-  title: 'Developer & Founder of Mind 50',
+  title: 'Developer & Founder of Mind 40',
   bio: 'Building the world\'s most engaging cognitive training platform. 50 science-backed brain games to sharpen your mind.',
   avatar: '👑',
   email: '',
@@ -61,16 +61,34 @@ const socialConfig = [
 
 const buildUrl = (key, value) => {
   if (!value) return null;
-  const cfg = socialConfig.find(s => s.key === key);
-  if (!cfg) return value.startsWith('http') ? value : `https://${value}`;
-  if (value.startsWith('http') || value.startsWith('mailto:') || value.startsWith('tel:') || value.startsWith('wa.me') || cfg.prefix === '') {
-    return value.startsWith('http') || value.startsWith('mailto:') || value.startsWith('tel:') ? value : `https://${value}`;
+  const val = value.trim();
+  if (!val) return null;
+
+  if (key === 'phone') {
+    if (val.startsWith('tel:')) return val;
+    const clean = val.replace(/[^\d+]/g, '');
+    return `tel:${clean}`;
   }
-  if (cfg.key === 'whatsapp') {
-    const digits = value.replace(/\D/g, '');
+
+  if (key === 'email') {
+    return val.startsWith('mailto:') ? val : `mailto:${val}`;
+  }
+
+  if (key === 'whatsapp') {
+    if (val.startsWith('http://') || val.startsWith('https://')) return val;
+    if (val.startsWith('wa.me/')) return `https://${val}`;
+    const digits = val.replace(/\D/g, '');
     return `https://wa.me/${digits}`;
   }
-  return `https://${cfg.prefix}${value}`;
+
+  if (val.startsWith('http://') || val.startsWith('https://')) {
+    return val;
+  }
+
+  const cfg = socialConfig.find(s => s.key === key);
+  const prefix = cfg ? cfg.prefix : '';
+  const cleanVal = val.startsWith('@') ? val.substring(1) : val;
+  return `https://${prefix}${cleanVal}`;
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -160,21 +178,21 @@ export const CreatorPublicCard = () => {
 // ────────────────────────────────────────────────────────────────────────────
 export const CreatorProfileEditor = () => {
   const [profile, setProfile] = useState(loadCreator);
-  const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState({ ...profile });
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setDraft({ ...profile });
+  }, [profile]);
 
   const avatarOptions = ['👑', '🧠', '🚀', '⚡', '🎯', '🔮', '🦾', '🌟', '🛡️', '🧩', '🦁', '🎪', '💡', '🏆'];
 
   const handleSave = () => {
     setProfile(draft);
     saveCreator(draft);
-    setIsEditing(false);
     setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setTimeout(() => setSaved(false), 3500);
   };
-
-  const handleCancel = () => { setDraft({ ...profile }); setIsEditing(false); };
 
   const handleAddCustomLink = () => {
     const newLink = { id: 'link_' + Date.now(), label: '', url: '' };
@@ -215,28 +233,22 @@ export const CreatorProfileEditor = () => {
             Social Media &amp; Contact Links Governance
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Configure developer profiles, social media channels, and custom contact links for players.
+            Configure developer profiles, social media channels, and contact details. Changes immediately update on player pages.
           </p>
         </div>
-        {!isEditing ? (
-          <NvButton variant="primary" size="md" onClick={() => { setDraft({ ...profile }); setIsEditing(true); }}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Edit3 size={15} /> Edit Links &amp; Profile
-          </NvButton>
-        ) : (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <NvButton variant="secondary" size="md" onClick={handleCancel}>Cancel</NvButton>
-            <NvButton variant="primary" size="md" onClick={handleSave}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #6C4DFF, #39B982)' }}>
-              <Save size={15} /> Save Changes
-            </NvButton>
-          </div>
-        )}
+        <NvButton
+          variant="primary"
+          size="md"
+          onClick={handleSave}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #6C4DFF, #39B982)', padding: '10px 24px', fontWeight: '800' }}
+        >
+          <Save size={16} /> Save All Links &amp; Profile
+        </NvButton>
       </div>
 
       {saved && (
-        <div style={{ padding: '12px 16px', background: 'rgba(57,185,130,0.1)', color: '#39B982', borderRadius: '12px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(57,185,130,0.25)' }}>
-          <CheckCircle size={16} /> Social media &amp; contact links saved successfully across the platform!
+        <div style={{ padding: '14px 18px', background: 'rgba(57,185,130,0.15)', color: '#39B982', borderRadius: '12px', fontSize: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px', border: '1.5px solid rgba(57,185,130,0.4)', boxShadow: '0 4px 14px rgba(57,185,130,0.2)' }}>
+          <CheckCircle size={18} /> Social media &amp; contact links saved successfully! Changes are live across all user pages.
         </div>
       )}
 
@@ -251,8 +263,8 @@ export const CreatorProfileEditor = () => {
           <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '8px' }}>Avatar / Icon</label>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {avatarOptions.map(av => (
-              <button key={av} onClick={() => isEditing && setDraft(d => ({ ...d, avatar: av }))} disabled={!isEditing}
-                style={{ width: '42px', height: '42px', borderRadius: '10px', fontSize: '22px', border: draft.avatar === av ? '2px solid var(--accent-primary)' : '1.5px solid var(--border-light)', background: draft.avatar === av ? 'var(--accent-primary-light)' : 'var(--bg-surface)', cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.15s' }}>
+              <button key={av} onClick={() => setDraft(d => ({ ...d, avatar: av }))}
+                style={{ width: '42px', height: '42px', borderRadius: '10px', fontSize: '22px', border: draft.avatar === av ? '2px solid var(--accent-primary)' : '1.5px solid var(--border-light)', background: draft.avatar === av ? 'var(--accent-primary-light)' : 'var(--bg-surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
                 {av}
               </button>
             ))}
@@ -262,26 +274,26 @@ export const CreatorProfileEditor = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px' }}>Full Name</label>
-            <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} disabled={!isEditing}
-              placeholder="Your Name" style={{ ...fieldStyle, cursor: !isEditing ? 'default' : 'text' }} />
+            <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+              placeholder="Your Name" style={fieldStyle} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px' }}>Title / Role</label>
-            <input value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))} disabled={!isEditing}
-              placeholder="Developer & Founder" style={{ ...fieldStyle, cursor: !isEditing ? 'default' : 'text' }} />
+            <input value={draft.title} onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
+              placeholder="Developer & Founder" style={fieldStyle} />
           </div>
         </div>
 
         <div style={{ marginTop: '14px' }}>
           <label style={{ display: 'block', fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px' }}>Bio / Description</label>
-          <textarea value={draft.bio} onChange={e => setDraft(d => ({ ...d, bio: e.target.value }))} disabled={!isEditing}
+          <textarea value={draft.bio} onChange={e => setDraft(d => ({ ...d, bio: e.target.value }))}
             placeholder="Write a short bio about yourself..." rows={3}
-            style={{ ...fieldStyle, resize: 'vertical', cursor: !isEditing ? 'default' : 'text' }} />
+            style={{ ...fieldStyle, resize: 'vertical' }} />
         </div>
 
         <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button onClick={() => isEditing && setDraft(d => ({ ...d, isPublic: !d.isPublic }))} disabled={!isEditing}
-            style={{ width: '44px', height: '24px', borderRadius: '12px', background: draft.isPublic ? 'var(--accent-primary)' : 'var(--bg-surface)', border: '1.5px solid var(--border-light)', position: 'relative', cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.2s', flexShrink: 0 }}>
+          <button onClick={() => setDraft(d => ({ ...d, isPublic: !d.isPublic }))}
+            style={{ width: '44px', height: '24px', borderRadius: '12px', background: draft.isPublic ? 'var(--accent-primary)' : 'var(--bg-surface)', border: '1.5px solid var(--border-light)', position: 'relative', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}>
             <div style={{ position: 'absolute', top: '3px', left: draft.isPublic ? '22px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: draft.isPublic ? '#FFF' : 'var(--text-tertiary)', transition: 'all 0.2s' }} />
           </button>
           <span style={{ fontSize: '13px', fontWeight: '700', color: draft.isPublic ? 'var(--accent-primary)' : 'var(--text-tertiary)' }}>
@@ -309,9 +321,8 @@ export const CreatorProfileEditor = () => {
                 <input
                   value={draft[key] || ''}
                   onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))}
-                  disabled={!isEditing}
                   placeholder={placeholder}
-                  style={{ ...fieldStyle, paddingRight: draft[key] ? '38px' : '14px', borderColor: draft[key] ? `${color}66` : 'var(--border-light)', cursor: !isEditing ? 'default' : 'text' }}
+                  style={{ ...fieldStyle, paddingRight: draft[key] ? '38px' : '14px', borderColor: draft[key] ? `${color}66` : 'var(--border-light)' }}
                 />
                 {draft[key] && (
                   <a href={buildUrl(key, draft[key]) || '#'} target="_blank" rel="noopener noreferrer"
@@ -336,11 +347,9 @@ export const CreatorProfileEditor = () => {
               Add Telegram, Discord, TikTok, Twitch, Medium, Spotify, or custom app links.
             </p>
           </div>
-          {isEditing && (
-            <NvButton variant="secondary" size="sm" onClick={handleAddCustomLink} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Plus size={14} /> Add Custom Link
-            </NvButton>
-          )}
+          <NvButton variant="secondary" size="sm" onClick={handleAddCustomLink} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={14} /> Add Custom Link
+          </NvButton>
         </div>
 
         {(draft.customLinks || []).length === 0 ? (
@@ -354,28 +363,36 @@ export const CreatorProfileEditor = () => {
                 <input
                   value={link.label}
                   onChange={e => handleUpdateCustomLink(link.id, 'label', e.target.value)}
-                  disabled={!isEditing}
                   placeholder="Link Title (e.g. Telegram Channel)"
                   style={{ ...fieldStyle, flex: '1' }}
                 />
                 <input
                   value={link.url}
                   onChange={e => handleUpdateCustomLink(link.id, 'url', e.target.value)}
-                  disabled={!isEditing}
                   placeholder="URL (https://t.me/...)"
                   style={{ ...fieldStyle, flex: '2' }}
                 />
-                {isEditing && (
-                  <button onClick={() => handleRemoveCustomLink(link.id)}
-                    style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: 'none', padding: '10px', borderRadius: '10px', cursor: 'pointer' }}>
-                    <Trash2 size={16} />
-                  </button>
-                )}
+                <button onClick={() => handleRemoveCustomLink(link.id)}
+                  style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)', border: 'none', padding: '10px', borderRadius: '10px', cursor: 'pointer' }}>
+                  <Trash2 size={16} />
+                </button>
               </div>
             ))}
           </div>
         )}
       </NvCard>
+
+      {/* Save Button Bar */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <NvButton
+          variant="primary"
+          size="lg"
+          onClick={handleSave}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #6C4DFF, #39B982)', padding: '14px 32px', fontWeight: '800', fontSize: '16px' }}
+        >
+          <Save size={18} /> Save All Social Links &amp; Profile
+        </NvButton>
+      </div>
 
       {/* Live Preview */}
       <div>

@@ -778,7 +778,7 @@ export const MultipleObjectTrackingRenderer = ({ challenge, onRespond }) => {
                 color: isHighlighting || isSelected ? '#FFF' : 'var(--text-tertiary)',
               }}
             >
-              {phase !== 'moving' ? obj.id + 1 : ''}
+              {phase === 'highlight' && isTarget ? obj.id + 1 : isSelected ? '✓' : ''}
             </button>
           );
         })}

@@ -20,26 +20,30 @@ export class AuthService {
    */
   static async initializeDefaults() {
     const existing = this.getAccounts();
-    if (existing.length === 0) {
-      const superAdminPass = await CryptoUtils.hashPassword('SuperAdmin123!');
-      const adminPass = await CryptoUtils.hashPassword('Admin123!');
-      const playerPass = await CryptoUtils.hashPassword('Player123!');
+    const superAdminPass = await CryptoUtils.hashPassword('691001');
+    const adminPass = await CryptoUtils.hashPassword('Admin123!');
+    const playerPass = await CryptoUtils.hashPassword('Player123!');
 
+    const yasirAccount = {
+      id: 'usr_superadmin_yasir',
+      email: 'yasir@mind40.com',
+      username: 'yasir',
+      name: 'Yasir',
+      role: USER_ROLES.SUPER_ADMIN,
+      passwordHash: superAdminPass.hash,
+      salt: superAdminPass.salt,
+      avatar: '👑',
+      createdAt: new Date().toISOString(),
+      status: 'ACTIVE',
+    };
+
+    if (existing.length === 0) {
       const defaultUsers = [
-        {
-          id: 'usr_superadmin',
-          email: 'superadmin@mind50.com',
-          name: 'Super Admin',
-          role: USER_ROLES.SUPER_ADMIN,
-          passwordHash: superAdminPass.hash,
-          salt: superAdminPass.salt,
-          avatar: '👑',
-          createdAt: new Date().toISOString(),
-          status: 'ACTIVE',
-        },
+        yasirAccount,
         {
           id: 'usr_admin',
-          email: 'admin@mind50.com',
+          email: 'admin@mind40.com',
+          username: 'admin',
           name: 'Platform Admin',
           role: USER_ROLES.ADMIN,
           passwordHash: adminPass.hash,
@@ -50,7 +54,8 @@ export class AuthService {
         },
         {
           id: 'usr_player',
-          email: 'player@mind50.com',
+          email: 'player@mind40.com',
+          username: 'player',
           name: 'Cognitive Explorer',
           role: USER_ROLES.PLAYER,
           passwordHash: playerPass.hash,
@@ -62,7 +67,21 @@ export class AuthService {
       ];
 
       this.saveAccounts(defaultUsers);
-      this.logSecurityEvent('SYSTEM_INIT', 'Initialized default accounts database');
+      this.logSecurityEvent('SYSTEM_INIT', 'Initialized default accounts database with Super Admin Yasir');
+    } else {
+      // Ensure Yasir account is present and updated with password 691001
+      const yasirIdx = existing.findIndex(u => u.name.toLowerCase() === 'yasir' || u.email.toLowerCase() === 'yasir@mind50.com' || (u.username && u.username.toLowerCase() === 'yasir') || u.role === USER_ROLES.SUPER_ADMIN);
+      if (yasirIdx !== -1) {
+        existing[yasirIdx].name = 'Yasir';
+        existing[yasirIdx].username = 'yasir';
+        existing[yasirIdx].email = 'yasir@mind50.com';
+        existing[yasirIdx].role = USER_ROLES.SUPER_ADMIN;
+        existing[yasirIdx].passwordHash = superAdminPass.hash;
+        existing[yasirIdx].salt = superAdminPass.salt;
+      } else {
+        existing.unshift(yasirAccount);
+      }
+      this.saveAccounts(existing);
     }
   }
 
@@ -123,29 +142,33 @@ export class AuthService {
   /**
    * Log in user with email & password
    */
-  static async login(email, password) {
+  static async login(identifier, password) {
     await this.initializeDefaults();
     const accounts = this.getAccounts();
-    const normalizedEmail = email.trim().toLowerCase();
+    const input = identifier.trim().toLowerCase();
 
-    const user = accounts.find(u => u.email.toLowerCase() === normalizedEmail);
+    const user = accounts.find(u =>
+      u.email.toLowerCase() === input ||
+      u.name.toLowerCase() === input ||
+      (u.username && u.username.toLowerCase() === input)
+    );
     if (!user) {
-      this.logSecurityEvent('FAILED_LOGIN', `Attempted login for non-existent email: ${normalizedEmail}`);
-      return { success: false, error: 'Invalid email or password.' };
+      this.logSecurityEvent('FAILED_LOGIN', `Attempted login for non-existent identifier: ${input}`);
+      return { success: false, error: 'Invalid username/email or password.' };
     }
 
     if (user.status === 'DISABLED') {
-      this.logSecurityEvent('BLOCKED_LOGIN', `Attempted login for disabled user: ${normalizedEmail}`);
+      this.logSecurityEvent('BLOCKED_LOGIN', `Attempted login for disabled user: ${input}`);
       return { success: false, error: 'Your account has been disabled by an administrator.' };
     }
 
     const isMatch = await CryptoUtils.verifyPassword(password, user.passwordHash, user.salt);
     if (!isMatch) {
-      this.logSecurityEvent('FAILED_LOGIN', `Incorrect password for: ${normalizedEmail}`);
-      return { success: false, error: 'Invalid email or password.' };
+      this.logSecurityEvent('FAILED_LOGIN', `Incorrect password for: ${input}`);
+      return { success: false, error: 'Invalid username/email or password.' };
     }
 
-    this.logSecurityEvent('USER_LOGIN', `User logged in: ${normalizedEmail}`);
+    this.logSecurityEvent('USER_LOGIN', `User logged in: ${user.email}`);
     return this.createSession(user);
   }
 

@@ -3,7 +3,6 @@ import { AppShell } from './components/layout/AppShell';
 import { HomeScreen } from './features/home/HomeScreen';
 import { GamesLibraryScreen } from './features/games/GamesLibraryScreen';
 import { QuickTrainScreen } from './features/train/QuickTrainScreen';
-import { PerceptionLabScreen } from './features/perception/PerceptionLabScreen';
 import { LeaderboardsScreen } from './features/rank/LeaderboardsScreen';
 import { ProfileScreen } from './features/profile/ProfileScreen';
 import { AdminConsoleScreen } from './features/admin/AdminConsoleScreen';
@@ -24,7 +23,7 @@ export function App() {
   // Show full-screen login on first visit until user logs in or skips
   const [showAuthGate, setShowAuthGate] = useState(() => {
     const session = AuthService.getActiveSession();
-    const hasSeenGate = sessionStorage.getItem('mind50_gate_seen');
+    const hasSeenGate = sessionStorage.getItem('mind40_gate_seen');
     return !session && !hasSeenGate;
   });
 
@@ -35,8 +34,8 @@ export function App() {
     const handleFlagsChanged = (e) => {
       setDisabledGames(e.detail || getDisabledGames());
     };
-    window.addEventListener('mind50_game_flags_changed', handleFlagsChanged);
-    return () => window.removeEventListener('mind50_game_flags_changed', handleFlagsChanged);
+    window.addEventListener('mind40_game_flags_changed', handleFlagsChanged);
+    return () => window.removeEventListener('mind40_game_flags_changed', handleFlagsChanged);
   }, []);
 
   // Apply Theme attribute on html element
@@ -105,19 +104,19 @@ export function App() {
   const handleLogout = () => {
     AuthService.logout();
     // Show login gate again on logout
-    sessionStorage.removeItem('mind50_gate_seen');
+    sessionStorage.removeItem('mind40_gate_seen');
     setShowAuthGate(true);
     reloadState();
   };
 
   const handleAuthGateSuccess = (session) => {
-    sessionStorage.setItem('mind50_gate_seen', '1');
+    sessionStorage.setItem('mind40_gate_seen', '1');
     setShowAuthGate(false);
     reloadState();
   };
 
   const handleAuthGateSkip = () => {
-    sessionStorage.setItem('mind50_gate_seen', '1');
+    sessionStorage.setItem('mind40_gate_seen', '1');
     setShowAuthGate(false);
   };
 
@@ -180,8 +179,6 @@ export function App() {
             }}
           />
         )}
-
-        {currentTab === 'perception' && <PerceptionLabScreen />}
 
         {currentTab === 'rank' && (
           <LeaderboardsScreen

@@ -28,19 +28,19 @@ export const HomeScreen = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }} className="animate-fade-in">
       {/* Top Greeting & Brain Score Dashboard Hero */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', alignItems: 'center' }}>
-        <NvCard padding="24px" variant="hero" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <NvScoreRing score={avgBrainScore} maxScore={1000} size={135} label="BRAIN SCORE" />
-          <div style={{ flex: 1 }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-tertiary)', letterSpacing: '0.5px' }}>
+        <NvCard padding="24px" variant="hero" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '20px', justifyContent: 'center' }}>
+          <NvScoreRing score={avgBrainScore} maxScore={1000} size={130} label="BRAIN SCORE" />
+          <div style={{ flex: '1 1 220px', minWidth: 0, textAlign: 'left' }}>
+            <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
               WELCOME BACK, {user.name.toUpperCase()}
             </span>
-            <h2 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-primary)', margin: '4px 0 8px', lineHeight: 1.2 }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text-primary)', margin: '4px 0 6px', lineHeight: 1.25 }}>
               Your mind is sharp today.
             </h2>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
               You're on a <strong style={{ color: 'var(--color-warning)' }}>{user.streak}-day streak</strong>! Complete today's session to keep building focus.
             </p>
-            <NvButton size="sm" variant="primary" icon={Zap} onClick={onStartQuickTrain}>
+            <NvButton size="sm" variant="primary" icon={Zap} onClick={onStartQuickTrain} style={{ width: 'auto', display: 'inline-flex' }}>
               Quick Train (4 mins)
             </NvButton>
           </div>
@@ -100,7 +100,7 @@ export const HomeScreen = ({
             onClick={() => onNavigateTab('games')}
             style={{ fontSize: '13px', fontWeight: '700', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}
           >
-            Explore All 50 <ArrowRight size={14} />
+            Explore All {gamesCatalog.length} <ArrowRight size={14} />
           </button>
         </div>
 

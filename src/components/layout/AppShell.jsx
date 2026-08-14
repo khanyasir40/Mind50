@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, Gamepad2, Dumbbell, Award, User, Eye, Sun, Moon, Flame, Shield, Settings, Bot, Sparkles } from 'lucide-react';
+import { AuthService } from '../../core/auth/AuthService';
 
 export const AppShell = ({
   currentTab = 'home',
@@ -11,12 +12,16 @@ export const AppShell = ({
   onOpenAdmin,
   onOpenAiCoach,
 }) => {
+  const session = AuthService.getActiveSession();
+  const role = session?.user?.role || userProfile?.role || 'PLAYER';
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN';
+
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'games', label: 'Games', icon: Gamepad2 },
     { id: 'train', label: 'Train', icon: Dumbbell },
-    { id: 'perception', label: 'Lab', icon: Eye },
     { id: 'rank', label: 'Rank', icon: Award },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield }] : []),
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
@@ -46,21 +51,19 @@ export const AppShell = ({
                 width: '38px',
                 height: '38px',
                 borderRadius: 'var(--radius-md)',
-                background: 'var(--accent-gradient)',
+                background: 'linear-gradient(135deg, var(--accent-primary), #39B982)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#FFFFFF',
-                fontWeight: '800',
-                fontSize: '20px',
+                fontSize: '22px',
                 boxShadow: 'var(--shadow-sm)',
               }}
             >
-              N
+              🧠
             </div>
             <div>
               <h1 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: 1.1 }}>
-                NEUROVAULT
+                MIND40
               </h1>
               <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: '600', letterSpacing: '0.4px' }}>
                 COGNITIVE PLATFORM
@@ -181,25 +184,51 @@ export const AppShell = ({
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', maxWidth: 'calc(100% - 100px)', padding: '4px 0', scrollbarWidth: 'none' }}>
+            {isAdmin && (
+              <button
+                onClick={() => onTabChange('admin')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '5px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  background: 'linear-gradient(135deg, rgba(108,77,255,0.2) 0%, rgba(232,93,117,0.2) 100%)',
+                  border: '1px solid var(--accent-primary)',
+                  color: 'var(--accent-primary)',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Shield size={13} />
+                <span>Admin</span>
+              </button>
+            )}
+
             {/* AI Coach Header Pill Button */}
             <button
               onClick={onOpenAiCoach}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
+                gap: '4px',
+                padding: '5px 10px',
                 borderRadius: 'var(--radius-full)',
                 background: 'linear-gradient(135deg, rgba(118,185,0,0.2) 0%, rgba(108,77,255,0.2) 100%)',
                 border: '1px solid rgba(118, 185, 0, 0.4)',
                 color: 'var(--text-primary)',
-                fontSize: '13px',
+                fontSize: '11px',
                 fontWeight: '700',
                 cursor: 'pointer',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}
             >
-              <Sparkles size={16} color="#76B900" />
+              <Sparkles size={14} color="#76B900" />
               <span>AI Coach</span>
             </button>
 
@@ -208,28 +237,32 @@ export const AppShell = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
-                padding: '5px 12px',
+                gap: '4px',
+                padding: '5px 10px',
                 borderRadius: 'var(--radius-full)',
                 background: 'var(--color-warning-bg)',
                 color: 'var(--color-warning)',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: '800',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}
             >
-              <Flame size={16} fill="var(--color-warning)" />
+              <Flame size={14} fill="var(--color-warning)" />
               <span>{userProfile.streak}d</span>
             </div>
 
             {/* Level Chip */}
             <div
               style={{
-                padding: '5px 12px',
+                padding: '5px 10px',
                 borderRadius: 'var(--radius-full)',
                 background: 'var(--accent-primary-light)',
                 color: 'var(--accent-primary)',
                 fontSize: '12px',
                 fontWeight: '800',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}
             >
               Lvl {userProfile.level}
@@ -239,20 +272,21 @@ export const AppShell = ({
             <button
               onClick={onToggleTheme}
               style={{
-                padding: '8px',
+                padding: '6px',
                 borderRadius: '50%',
                 background: 'var(--bg-pill)',
                 color: 'var(--text-secondary)',
+                flexShrink: 0,
               }}
               className="mobile-theme-btn"
             >
-              {theme === 'dark' ? <Sun size={18} color="#F59E0B" /> : <Moon size={18} />}
+              {theme === 'dark' ? <Sun size={16} color="#F59E0B" /> : <Moon size={16} />}
             </button>
           </div>
         </header>
 
         {/* View Content Body */}
-        <main style={{ flex: 1, padding: '24px 20px 90px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+        <main style={{ flex: 1, padding: '20px 16px 125px', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
           {children}
         </main>
       </div>

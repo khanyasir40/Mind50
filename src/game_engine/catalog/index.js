@@ -1,9 +1,9 @@
 /* ==========================================================================
-   NEUROVAULT 50 GAME CATALOG DEFINITIONS
+   MIND 40 GAME CATALOG DEFINITIONS (EXACTLY 40 GAMES)
    ========================================================================== */
 
 export const GAMES_CATALOG = [
-  // --- MEMORY (1-10) ---
+  // --- MEMORY (1-7) ---
   {
     id: 'digit_span_forward',
     name: 'Digit Span Forward',
@@ -53,32 +53,6 @@ export const GAMES_CATALOG = [
     tutorial: 'Remember avatar faces and their associated names, then pick the matching pair.',
   },
   {
-    id: 'paired_associates',
-    name: 'Symbol Paired Associates',
-    category: 'Memory',
-    difficulty: 3,
-    description: 'Learn unique symbol pairs and select the missing match when tested.',
-    tutorial: 'Memorize which symbol links with which icon, then fill in missing pairs.',
-  },
-  {
-    id: 'object_location',
-    name: 'Object Location Memory',
-    category: 'Memory',
-    difficulty: 3,
-    description: 'Remember where items were placed inside a virtual room grid.',
-    tutorial: 'Items are placed briefly. Drag or tap them back into their original coordinates.',
-  },
-  {
-    id: 'sequence_reproduction',
-    name: 'Visual Sequence Reproduction',
-    category: 'Memory',
-    difficulty: 2,
-    disabled: true,
-    is_active: false,
-    description: 'Reproduce animated color-and-sound light sequences.',
-    tutorial: 'Follow the glowing light pattern and reproduce the melody sequence.',
-  },
-  {
     id: 'visual_pattern_memory',
     name: 'Visual Pattern Memory',
     category: 'Memory',
@@ -87,7 +61,7 @@ export const GAMES_CATALOG = [
     tutorial: 'A grid of tiles lights up briefly. Re-shade the exact tiles after they hide.',
   },
 
-  // --- ATTENTION / INHIBITION (11-20) ---
+  // --- ATTENTION / INHIBITION (8-14) ---
   {
     id: 'stroop_sprint',
     name: 'Stroop Sprint',
@@ -137,30 +111,6 @@ export const GAMES_CATALOG = [
     tutorial: 'Match color key bindings ignoring whether the target pops up left or right.',
   },
   {
-    id: 'visual_search',
-    name: 'Visual Search Matrix',
-    category: 'Attention',
-    difficulty: 2,
-    description: 'Find a unique target symbol hidden among dense distractors.',
-    tutorial: 'Locate the single target symbol scattered in the grid as quickly as possible.',
-  },
-  {
-    id: 'cancellation_task',
-    name: 'Target Cancellation',
-    category: 'Attention',
-    difficulty: 3,
-    description: 'Tap all instances of a designated target shape before time expires.',
-    tutorial: 'Tap every designated target shape while ignoring distractor shapes.',
-  },
-  {
-    id: 'continuous_performance',
-    name: 'Continuous Performance',
-    category: 'Attention',
-    difficulty: 3,
-    description: 'Monitor a rapid stream of letters and tap only when "X" immediately follows "A".',
-    tutorial: 'Tap ONLY when you see letter X immediately after letter A in the stream.',
-  },
-  {
     id: 'multiple_object_tracking',
     name: 'Multiple Object Tracking',
     category: 'Attention',
@@ -169,7 +119,7 @@ export const GAMES_CATALOG = [
     tutorial: 'Watch the highlighted targets move, then select them after motion stops.',
   },
 
-  // --- EXECUTIVE FUNCTION / PLANNING (21-30) ---
+  // --- EXECUTIVE FUNCTION / PLANNING (15-20) ---
   {
     id: 'wisconsin_card_sorting',
     name: 'Adaptive Rule Sorting',
@@ -177,16 +127,6 @@ export const GAMES_CATALOG = [
     difficulty: 4,
     description: 'Deduce hidden sorting rules (color, shape, count) from feedback and adapt when rules change.',
     tutorial: 'Sort cards under 4 piles. Deduce whether rule is color, shape, or number!',
-  },
-  {
-    id: 'tower_of_london',
-    name: 'Tower of Pegs',
-    category: 'Executive',
-    difficulty: 3,
-    disabled: true,
-    is_active: false,
-    description: 'Rearrange colored beads across 3 pegs to match target goal in minimal moves.',
-    tutorial: 'Move beads between pegs one by one to achieve the target configuration.',
   },
   {
     id: 'tower_of_hanoi',
@@ -228,32 +168,8 @@ export const GAMES_CATALOG = [
     description: 'Plan a complete path through a complex maze before executing moves.',
     tutorial: 'Trace the optimal route from entrance to exit avoiding dead ends.',
   },
-  {
-    id: 'planning_challenge',
-    name: 'Resource Planning',
-    category: 'Executive',
-    difficulty: 4,
-    description: 'Order actions and moves to maximize score efficiency.',
-    tutorial: 'Arrange step sequences to visit all checkpoints in minimum total distance.',
-  },
-  {
-    id: 'serial_subtraction',
-    name: 'Serial Subtraction Speed',
-    category: 'Executive',
-    difficulty: 3,
-    description: 'Perform consecutive mental subtraction steps (e.g. 100 - 7 - 7...).',
-    tutorial: 'Subtract the step value repeatedly and enter successive answers.',
-  },
-  {
-    id: 'backward_counting',
-    name: 'Backward Count Sprint',
-    category: 'Executive',
-    difficulty: 2,
-    description: 'Count backward under rhythm and time constraints.',
-    tutorial: 'Select the correct backward sequence number as numbers count down.',
-  },
 
-  // --- SPEED (31-36) ---
+  // --- SPEED (21-26) ---
   {
     id: 'simple_reaction',
     name: 'Simple Reaction Time',
@@ -303,7 +219,7 @@ export const GAMES_CATALOG = [
     tutorial: 'Tap when the target color appears, ignore all other colors.',
   },
 
-  // --- SPATIAL / VISUAL (37-42) ---
+  // --- SPATIAL / VISUAL (27-32) ---
   {
     id: 'mental_rotation',
     name: '3D Mental Rotation',
@@ -353,7 +269,7 @@ export const GAMES_CATALOG = [
     tutorial: 'Spot the object that changes between the two flickering images.',
   },
 
-  // --- REASONING (43-48) ---
+  // --- REASONING (33-38) ---
   {
     id: 'raven_matrix',
     name: 'Matrix Pattern Reasoning',
@@ -403,7 +319,7 @@ export const GAMES_CATALOG = [
     tutorial: 'Determine how shapes transform across steps and apply the rule to the target.',
   },
 
-  // --- MIXED (49-50) ---
+  // --- MIXED FUSION (39-40) ---
   {
     id: 'hidden_object',
     name: 'Hidden Object Search',

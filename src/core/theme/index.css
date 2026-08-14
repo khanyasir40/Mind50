@@ -168,3 +168,23 @@ body.user-is-tabbing *:focus-visible {
   outline: 3px solid var(--accent-primary) !important;
   outline-offset: 2px !important;
 }
+
+/* Mobile Safe Area Insets Support (iOS Notches & Android Gesture Bars) */
+:root {
+  --safe-area-top: max(0px, env(safe-area-inset-top));
+  --safe-area-bottom: max(0px, env(safe-area-inset-bottom));
+  --safe-area-left: max(0px, env(safe-area-inset-left));
+  --safe-area-right: max(0px, env(safe-area-inset-right));
+}
+
+@media (max-width: 767px) {
+  body {
+    padding-top: var(--safe-area-top);
+  }
+
+  /* Prevent awkward horizontal scroll on narrow devices */
+  .mobile-bottom-nav {
+    bottom: max(12px, calc(12px + var(--safe-area-bottom))) !important;
+  }
+}
+

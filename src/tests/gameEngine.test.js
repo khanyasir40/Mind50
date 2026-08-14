@@ -17,7 +17,7 @@ import { CryptoUtils } from '../core/auth/CryptoUtils.js';
 initializeGameEngines();
 
 export async function runAllEngineTests() {
-  console.log('🧪 Starting NeuroVault 50 Game Engine Audit & Validation Tests...\n');
+  console.log(`🧪 Starting Mind 40 Game Engine Audit & Validation Tests (${GAMES_CATALOG.length} Active Engines)...\n`);
 
   let passedGames = 0;
   let failedGames = 0;
@@ -142,7 +142,7 @@ export async function runAllEngineTests() {
       assert.strictEqual(hardChallenge.isHardMode, true, `[${game.id}] Hard mode flag set`);
 
       passedGames++;
-      console.log(`  ✓ Game ${passedGames}/50 [${game.id}] (${game.name}): PASSED (Correct + Wrong answer checks)`);
+      console.log(`  ✓ Game ${passedGames}/${GAMES_CATALOG.length} [${game.id}] (${game.name}): PASSED (Correct + Wrong answer checks)`);
     } catch (err) {
       failedGames++;
       console.error(`  ❌ Game [${game.id}] (${game.name}) FAILED:`, err.message);
@@ -177,7 +177,7 @@ export async function runAllEngineTests() {
   console.log('  ✓ Anti-Cheat Score Verification: PASSED');
 
   console.log(`\n==================================================`);
-  console.log(`🎉 TEST SUMMARY: ${passedGames}/50 Games Passed (${failedGames} Failures)`);
+  console.log(`🎉 TEST SUMMARY: ${passedGames}/${GAMES_CATALOG.length} Games Passed (${failedGames} Failures)`);
   console.log(`==================================================\n`);
 
   if (failedGames > 0) {

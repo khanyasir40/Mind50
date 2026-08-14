@@ -352,69 +352,73 @@ export const GameplayHost = ({
         background: 'var(--bg-base)',
         display: 'flex',
         flexDirection: 'column',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
       className="animate-fade-in"
     >
       {/* Gameplay HUD Header */}
       <header
         style={{
-          height: '60px',
-          padding: '0 20px',
+          minHeight: '56px',
+          padding: '0 12px',
           background: 'var(--bg-surface)',
           borderBottom: '1px solid var(--border-light)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: '8px',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
         }}
       >
-        <button onClick={onClose} style={{ padding: '8px', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-          <X size={22} />
+        <button onClick={onClose} style={{ padding: '8px', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
+          <X size={20} />
         </button>
 
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)' }}>{game.name}</h3>
+        <div style={{ textAlign: 'center', minWidth: 0, flexShrink: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center', overflow: 'hidden' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', margin: 0 }}>{game.name}</h3>
             {isHardMode && (
-              <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'var(--color-error)', color: '#FFF', fontWeight: '800', textTransform: 'uppercase' }}>
-                PRO HARD MODE
+              <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: 'var(--radius-full)', background: 'var(--color-error)', color: '#FFF', fontWeight: '800', textTransform: 'uppercase', flexShrink: 0 }}>
+                HARD
               </span>
             )}
           </div>
-          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Trial {currentTrial} of {totalTrials}</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>Trial {currentTrial} of {totalTrials}</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {trialTimeLeftMs !== null && trialPhase === 'input' && (
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '4px 10px',
+                padding: '3px 8px',
                 borderRadius: 'var(--radius-full)',
                 background: trialTimeLeftMs < 3000 ? 'var(--color-error-bg)' : 'var(--accent-primary-light)',
                 color: trialTimeLeftMs < 3000 ? 'var(--color-error)' : 'var(--accent-primary)',
                 fontWeight: '800',
-                fontSize: '13px',
+                fontSize: '12px',
                 border: trialTimeLeftMs < 3000 ? '1px solid var(--color-error)' : '1px solid var(--border-light)',
-                transition: 'all 0.2s ease',
               }}
             >
-              <Clock size={15} />
+              <Clock size={13} />
               {(trialTimeLeftMs / 1000).toFixed(1)}s
             </div>
           )}
           {comboStreak > 1 && (
-            <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '2px' }}>
-              <Flame size={14} /> {comboStreak}x COMBO
+            <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <Flame size={13} /> {comboStreak}x
             </span>
           )}
-          <span style={{ fontSize: '15px', fontWeight: '800', color: 'var(--accent-primary)' }}>{score} pts</span>
+          <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent-primary)', whiteSpace: 'nowrap' }}>{score} pts</span>
           <button
             onClick={() => setGameState(gameState === 'playing' ? 'paused' : 'playing')}
-            style={{ padding: '8px', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ padding: '6px', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            {gameState === 'playing' ? <Pause size={20} /> : <Play size={20} />}
+            {gameState === 'playing' ? <Pause size={18} /> : <Play size={18} />}
           </button>
         </div>
       </header>
@@ -432,7 +436,7 @@ export const GameplayHost = ({
       )}
 
       {/* Main Gameplay Arena Body */}
-      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto', boxSizing: 'border-box', width: '100%' }}>
         {gameState === 'tutorial' && (
           <NvCard padding="28px" variant="hero" style={{ maxWidth: '440px', textAlign: 'center' }}>
             <span style={{ padding: '4px 12px', borderRadius: 'var(--radius-full)', background: 'var(--accent-primary-light)', color: 'var(--accent-primary)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase' }}>

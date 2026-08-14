@@ -7,8 +7,8 @@ import { ServerScoringValidator } from '../game_engine/core/ServerScoringValidat
 
 const STORAGE_KEY_PREFIX = 'neurovault_user_state_';
 const GLOBAL_LEADERBOARD_KEY = 'neurovault_global_leaderboard_v1';
-const DISABLED_GAMES_KEY = 'mind50_disabled_games_v1';
-const ADMIN_GAME_CONFIGS_KEY = 'mind50_admin_game_configs_v2';
+const DISABLED_GAMES_KEY = 'mind40_disabled_games_v1';
+const ADMIN_GAME_CONFIGS_KEY = 'mind40_admin_game_configs_v2';
 
 export const getDisabledGames = () => {
   try {
@@ -27,7 +27,7 @@ export const setGameDisabledStatus = (gameId, isDisabled) => {
     delete current[gameId];
   }
   localStorage.setItem(DISABLED_GAMES_KEY, JSON.stringify(current));
-  window.dispatchEvent(new CustomEvent('mind50_game_flags_changed', { detail: current }));
+  window.dispatchEvent(new CustomEvent('mind40_game_flags_changed', { detail: current }));
   return current;
 };
 
@@ -86,29 +86,26 @@ const defaultState = {
   user: {
     id: 'usr_guest',
     name: 'Cognitive Explorer',
-    email: 'player@mind50.com',
+    email: 'player@mind40.com',
     role: 'PLAYER',
     avatar: '🧩',
-    xp: 1250,
-    level: 5,
-    streak: 3,
-    lastPlayedDate: new Date().toISOString().split('T')[0],
+    xp: 0,
+    level: 1,
+    streak: 0,
+    lastPlayedDate: null,
     joinedAt: new Date().toISOString(),
   },
   scores: {
-    memory: 740,
-    attention: 810,
-    speed: 690,
-    logic: 780,
-    spatial: 720,
-    flexibility: 750,
-    inhibition: 800,
+    memory: 0,
+    attention: 0,
+    speed: 0,
+    logic: 0,
+    spatial: 0,
+    flexibility: 0,
+    inhibition: 0,
   },
-  gameProgress: {}, // { [gameId]: { bestScore: 920, attemptsCount: 14, lastPlayed: '...' } }
-  achievements: [
-    { id: 'first_game', unlockedAt: new Date().toISOString() },
-    { id: 'streak_3', unlockedAt: new Date().toISOString() },
-  ],
+  gameProgress: {}, // { [gameId]: { bestScore: 0, attemptsCount: 0, lastPlayed: '...' } }
+  achievements: [],
   dailyChallenge: {
     lastCompletedDate: null,
     history: [],

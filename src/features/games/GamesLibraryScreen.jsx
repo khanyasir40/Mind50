@@ -35,7 +35,7 @@ export const GamesLibraryScreen = ({
       {/* Header & Search */}
       <div>
         <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px' }}>
-          Game Catalog (50 Engines)
+          Game Catalog ({gamesCatalog.length} Engines)
         </h2>
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
           Procedurally generated cognitive challenges across 7 key brain dimensions.

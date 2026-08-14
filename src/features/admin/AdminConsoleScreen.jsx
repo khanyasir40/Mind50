@@ -33,8 +33,8 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
     });
 
     const handleConfigChange = () => refreshData();
-    window.addEventListener('mind50_admin_configs_changed', handleConfigChange);
-    return () => window.removeEventListener('mind50_admin_configs_changed', handleConfigChange);
+    window.addEventListener('mind40_admin_configs_changed', handleConfigChange);
+    return () => window.removeEventListener('mind40_admin_configs_changed', handleConfigChange);
   }, []);
 
   const currentUser = session?.user;
@@ -117,7 +117,7 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
         </NvPill>
         <NvPill active={activeTab === 'games'} onClick={() => setActiveTab('games')}>
           <Sliders size={14} style={{ display: 'inline', marginRight: '4px' }} />
-          Game Engine Controls (50)
+          Game Engine Controls ({gamesCatalog?.length || 40})
         </NvPill>
         <NvPill active={activeTab === 'users'} onClick={() => setActiveTab('users')}>
           User Accounts ({accounts.length})
@@ -146,7 +146,7 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
 
             <NvCard padding="20px">
               <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>CATALOG GAMES</span>
-              <h3 style={{ fontSize: '32px', fontWeight: '800', color: 'var(--accent-primary)', margin: '4px 0' }}>50 / 50</h3>
+              <h3 style={{ fontSize: '32px', fontWeight: '800', color: 'var(--accent-primary)', margin: '4px 0' }}>{gamesCatalog?.length || 40} / {gamesCatalog?.length || 40}</h3>
               <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-success)' }}>Full Admin Control</span>
             </NvCard>
 
@@ -220,7 +220,7 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
                           )}
                         </h4>
                         <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{game.category} • Default Difficulty {game.difficulty}</span>
-                      </div>
+                      </div>0
 
                       {/* Active Toggle Switch */}
                       <button
