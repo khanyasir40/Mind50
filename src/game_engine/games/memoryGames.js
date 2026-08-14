@@ -5,15 +5,17 @@
 export const MemoryGames = {
   // GAME 01: DIGIT SPAN FORWARD
   digit_span_forward: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
-      const length = (isHardMode ? 6 : 4) + Math.min(difficulty, 6);
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
+      const length = isHardMode
+        ? Math.min(10, 6 + Math.floor((trialIndex - 1) / 3) + Math.min(difficulty, 2))
+        : Math.min(8, 3 + Math.floor((trialIndex - 1) / 2) + Math.min(difficulty, 2));
       const digits = Array.from({ length }, () => prng.nextRange(0, 9));
-      const speedMs = Math.max(500, (isHardMode ? 550 : 900) - difficulty * 55);
+      const speedMs = Math.max(300, (isHardMode ? 450 : 850) - (trialIndex - 1) * 35 - difficulty * 30);
 
       return {
         digits,
         expected: digits.join(''),
-        displayDurationMs: (digits.length + 1) * speedMs + 1000,
+        displayDurationMs: (digits.length + 1) * speedMs + 800,
         speedMs,
         isHardMode,
       };
@@ -32,15 +34,17 @@ export const MemoryGames = {
 
   // GAME 02: DIGIT SPAN BACKWARD
   digit_span_backward: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
-      const length = (isHardMode ? 5 : 3) + Math.min(difficulty, 5);
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
+      const length = isHardMode
+        ? Math.min(9, 5 + Math.floor((trialIndex - 1) / 3) + Math.min(difficulty, 2))
+        : Math.min(7, 2 + Math.floor((trialIndex - 1) / 2) + Math.min(difficulty, 2));
       const digits = Array.from({ length }, () => prng.nextRange(1, 9));
-      const speedMs = Math.max(500, (isHardMode ? 500 : 850) - difficulty * 50);
+      const speedMs = Math.max(300, (isHardMode ? 400 : 800) - (trialIndex - 1) * 35 - difficulty * 30);
 
       return {
         digits,
         expected: [...digits].reverse().join(''),
-        displayDurationMs: (digits.length + 1) * speedMs + 1000,
+        displayDurationMs: (digits.length + 1) * speedMs + 800,
         speedMs,
         isHardMode,
       };
@@ -59,8 +63,10 @@ export const MemoryGames = {
 
   // GAME 03: CORSI BLOCK TAPPING
   corsi_blocks: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
-      const seqLen = (isHardMode ? 6 : 3) + Math.min(difficulty, 6);
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
+      const seqLen = isHardMode
+        ? Math.min(9, 5 + Math.floor((trialIndex - 1) / 3) + Math.min(difficulty, 2))
+        : Math.min(7, 2 + Math.floor((trialIndex - 1) / 2) + Math.min(difficulty, 2));
       const gridSize = 9;
 
       const sequence = [];
@@ -72,7 +78,7 @@ export const MemoryGames = {
         sequence.push(next);
       }
 
-      const stepMs = Math.max(400, (isHardMode ? 500 : 800) - difficulty * 55);
+      const stepMs = Math.max(280, (isHardMode ? 450 : 750) - (trialIndex - 1) * 35 - difficulty * 25);
 
       return {
         sequence,
@@ -98,8 +104,10 @@ export const MemoryGames = {
 
   // GAME 04: SPATIAL SPAN
   spatial_span: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
-      const seqLen = (isHardMode ? 6 : 3) + Math.min(difficulty, 6);
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
+      const seqLen = isHardMode
+        ? Math.min(9, 5 + Math.floor((trialIndex - 1) / 3) + Math.min(difficulty, 2))
+        : Math.min(7, 2 + Math.floor((trialIndex - 1) / 2) + Math.min(difficulty, 2));
       const gridSize = 9;
 
       const sequence = [];
@@ -111,7 +119,7 @@ export const MemoryGames = {
         sequence.push(next);
       }
 
-      const stepMs = Math.max(400, (isHardMode ? 500 : 800) - difficulty * 50);
+      const stepMs = Math.max(280, (isHardMode ? 450 : 750) - (trialIndex - 1) * 35 - difficulty * 25);
 
       return {
         sequence,
@@ -137,7 +145,7 @@ export const MemoryGames = {
 
   // GAME 05: PICTURE SCENE RECALL
   picture_recall: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
       const objectPools = [
         { icon: '🍎', name: 'Apple' },
         { icon: '📚', name: 'Books' },
@@ -154,7 +162,7 @@ export const MemoryGames = {
       ];
 
       const positionList = ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center', 'Mid-Left', 'Mid-Right', 'Top-Center', 'Bottom-Center'];
-      const count = isHardMode ? 9 : 4 + Math.min(difficulty, 5);
+      const count = isHardMode ? Math.min(9, 6 + Math.floor((trialIndex - 1) / 3)) : Math.min(7, 3 + Math.floor((trialIndex - 1) / 2));
       const shuffled = prng.shuffle([...objectPools]);
       const selectedObjects = shuffled.slice(0, Math.min(count, shuffled.length));
       const shuffledPositions = prng.shuffle([...positionList]);
@@ -177,9 +185,9 @@ export const MemoryGames = {
         targetIcon: target.icon,
         correctAnswer: correctPos,
         options,
-        studyDurationMs: isHardMode ? 3500 : 5000,
-        exposureMs: isHardMode ? 3500 : 5000,
-        displayDurationMs: isHardMode ? 3500 : 5000,
+        studyDurationMs: isHardMode ? 3500 : Math.max(3000, 5000 - (trialIndex - 1) * 200),
+        exposureMs: isHardMode ? 3500 : Math.max(3000, 5000 - (trialIndex - 1) * 200),
+        displayDurationMs: isHardMode ? 3500 : Math.max(3000, 5000 - (trialIndex - 1) * 200),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -190,26 +198,40 @@ export const MemoryGames = {
 
   // GAME 06: FACE-NAME MEMORY
   face_name_memory: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
       const avatarPool = [
         { avatar: '🧑‍🦱', names: ['Zara', 'Maya', 'Leila', 'Priya'] },
-        { avatar: '🧔', names: ['Bram', 'Kai', 'Ivan', 'Samir'] },
+        { avatar: '🧔‍♂️', names: ['Bram', 'Kai', 'Ivan', 'Samir'] },
         { avatar: '👩‍🦰', names: ['Aria', 'Nora', 'Luna', 'Cleo'] },
         { avatar: '👨‍🦳', names: ['Hugo', 'Curt', 'Wade', 'Glen'] },
         { avatar: '👩‍🦳', names: ['Edna', 'Rose', 'Joan', 'Vera'] },
-        { avatar: '🧑‍🦲', names: ['Drew', 'Ash', 'Seth', 'Lane'] },
+        { avatar: '👳‍♂️', names: ['Tariq', 'Zayn', 'Amir', 'Rohan'] },
         { avatar: '👩‍🦱', names: ['Amber', 'Jade', 'Ruby', 'Pearl'] },
-        { avatar: '👨‍🦲', names: ['Rex', 'Ford', 'Reid', 'Vance'] },
+        { avatar: '🕵️‍♂️', names: ['Rex', 'Ford', 'Reid', 'Vance'] },
+        { avatar: '👸', names: ['Sia', 'Elena', 'Tanya', 'Mira'] },
+        { avatar: '👨‍🌾', names: ['Seth', 'Drew', 'Ash', 'Lane'] },
+        { avatar: '👷‍♀️', names: ['Kira', 'Nia', 'Gwen', 'Hope'] },
+        { avatar: '👨‍🎨', names: ['Leo', 'Milo', 'Nico', 'Ezra'] },
       ];
 
-      const pairCount = isHardMode ? 5 : 2 + Math.min(difficulty, 4);
-      const shuffledPool = prng.shuffle([...avatarPool]);
-      const selected = shuffledPool.slice(0, pairCount);
+      const pairCount = isHardMode
+        ? Math.min(7, 5 + Math.floor((trialIndex - 1) / 3))
+        : Math.min(5, 2 + Math.floor((trialIndex - 1) / 2));
 
-      const pairs = selected.map(p => ({
-        avatar: p.avatar,
-        name: p.names[prng.nextRange(0, p.names.length - 1)],
-      }));
+      const shuffledPool = prng.shuffle([...avatarPool]);
+      const selectedAvatars = new Set();
+      const pairs = [];
+
+      for (const item of shuffledPool) {
+        if (!selectedAvatars.has(item.avatar)) {
+          selectedAvatars.add(item.avatar);
+          pairs.push({
+            avatar: item.avatar,
+            name: item.names[prng.nextRange(0, item.names.length - 1)],
+          });
+        }
+        if (pairs.length >= pairCount) break;
+      }
 
       const targetIdx = prng.nextRange(0, pairs.length - 1);
       const targetPair = pairs[targetIdx];
@@ -222,8 +244,8 @@ export const MemoryGames = {
         targetAvatar: targetPair.avatar,
         nameOptions: options,
         options,
-        studyDurationMs: isHardMode ? 4000 : 5500,
-        displayDurationMs: isHardMode ? 4000 : 5500,
+        studyDurationMs: isHardMode ? 3500 : Math.max(3000, 5500 - (trialIndex - 1) * 200),
+        displayDurationMs: isHardMode ? 3500 : Math.max(3000, 5500 - (trialIndex - 1) * 200),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -234,7 +256,7 @@ export const MemoryGames = {
 
   // GAME 07: PAIRED ASSOCIATES
   paired_associates: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
       const symbolPairs = [
         { symbolA: '★', symbolB: '◯' },
         { symbolA: '◆', symbolB: '△' },
@@ -246,7 +268,7 @@ export const MemoryGames = {
         { symbolA: '⟁', symbolB: '⊗' },
       ];
 
-      const count = isHardMode ? 5 : 2 + Math.min(difficulty, 4);
+      const count = isHardMode ? Math.min(7, 5 + Math.floor((trialIndex - 1) / 3)) : Math.min(5, 2 + Math.floor((trialIndex - 1) / 2));
       const shuffledPairs = prng.shuffle([...symbolPairs]);
       const selected = shuffledPairs.slice(0, count);
 
@@ -264,8 +286,8 @@ export const MemoryGames = {
         targetAvatar: targetPair.symbolA,
         nameOptions: options,
         options,
-        studyDurationMs: isHardMode ? 3500 : 5000,
-        displayDurationMs: isHardMode ? 3500 : 5000,
+        studyDurationMs: isHardMode ? 3500 : Math.max(3000, 5000 - (trialIndex - 1) * 200),
+        displayDurationMs: isHardMode ? 3500 : Math.max(3000, 5000 - (trialIndex - 1) * 200),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -278,7 +300,7 @@ export const MemoryGames = {
 
   // GAME 08: OBJECT LOCATION MEMORY
   object_location: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
       const objects = [
         { symbol: '🍎', name: 'Apple' },
         { symbol: '📚', name: 'Books' },
@@ -291,10 +313,10 @@ export const MemoryGames = {
         { symbol: '🧲', name: 'Magnet' },
       ];
 
-      const gridDim = isHardMode ? 4 : (difficulty > 5 ? 4 : 3);
+      const gridDim = isHardMode ? 4 : (difficulty > 5 || trialIndex > 5 ? 4 : 3);
       const totalCells = gridDim * gridDim;
 
-      const itemCount = isHardMode ? 4 : 2 + Math.min(difficulty, 3);
+      const itemCount = isHardMode ? Math.min(6, 4 + Math.floor((trialIndex - 1) / 3)) : Math.min(4, 2 + Math.floor((trialIndex - 1) / 2));
       const shuffledObjects = prng.shuffle([...objects]);
       const selectedObjects = shuffledObjects.slice(0, itemCount);
 
@@ -322,8 +344,8 @@ export const MemoryGames = {
         gridOptions,
         gridDim,
         totalCells,
-        studyDurationMs: Math.max(1500, (isHardMode ? 2000 : 3500) - difficulty * 200),
-        displayDurationMs: Math.max(1500, (isHardMode ? 2000 : 3500) - difficulty * 200),
+        studyDurationMs: Math.max(1200, (isHardMode ? 2000 : 3500) - (trialIndex - 1) * 200 - difficulty * 150),
+        displayDurationMs: Math.max(1200, (isHardMode ? 2000 : 3500) - (trialIndex - 1) * 200 - difficulty * 150),
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -336,7 +358,7 @@ export const MemoryGames = {
 
   // GAME 09: VISUAL SEQUENCE REPRODUCTION (Simon-Says)
   sequence_reproduction: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
       const itemColors = [
         { id: 'red', name: 'Red', color: '#E85D75' },
         { id: 'blue', name: 'Blue', color: '#6C4DFF' },
@@ -344,7 +366,10 @@ export const MemoryGames = {
         { id: 'yellow', name: 'Yellow', color: '#F0A83A' },
       ];
 
-      const seqLen = (isHardMode ? 6 : 3) + Math.min(difficulty, 6);
+      const seqLen = isHardMode
+        ? Math.min(8, 5 + Math.floor((trialIndex - 1) / 3))
+        : Math.min(6, 2 + Math.floor((trialIndex - 1) / 2));
+
       const sequence = [];
       for (let i = 0; i < seqLen; i++) {
         let idx;
@@ -353,7 +378,7 @@ export const MemoryGames = {
         sequence.push(idx);
       }
 
-      const stepMs = Math.max(350, (isHardMode ? 400 : 700) - difficulty * 50);
+      const stepMs = Math.max(280, (isHardMode ? 400 : 700) - (trialIndex - 1) * 35 - difficulty * 25);
 
       return {
         items: itemColors,
@@ -375,10 +400,12 @@ export const MemoryGames = {
 
   // GAME 10: VISUAL PATTERN MEMORY (Matrix Grid)
   visual_pattern_memory: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
       const dimension = isHardMode ? 5 : 4;
       const totalCells = dimension * dimension;
-      const shadedCount = (isHardMode ? 10 : 5) + Math.min(difficulty, 7);
+      const shadedCount = isHardMode
+        ? Math.min(12, 7 + Math.floor((trialIndex - 1) / 3))
+        : Math.min(7, 3 + Math.floor((trialIndex - 1) / 2));
 
       const shadedSet = new Set();
       while (shadedSet.size < Math.min(shadedCount, totalCells - 4)) {
@@ -390,8 +417,8 @@ export const MemoryGames = {
         dimension,
         targetGrid,
         shadedIndices: targetGrid,
-        studyDurationMs: Math.max(1500, (isHardMode ? 2000 : 3500) - difficulty * 200),
-        displayDurationMs: Math.max(1500, (isHardMode ? 2000 : 3500) - difficulty * 200),
+        studyDurationMs: Math.max(1000, (isHardMode ? 2000 : 3500) - (trialIndex - 1) * 200 - difficulty * 100),
+        displayDurationMs: Math.max(1000, (isHardMode ? 2000 : 3500) - (trialIndex - 1) * 200 - difficulty * 100),
       };
     },
     calculateScore: (challenge, sessionResult) => {

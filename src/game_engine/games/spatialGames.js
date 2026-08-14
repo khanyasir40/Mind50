@@ -54,22 +54,24 @@ export const SpatialGames = {
 
   // GAME 38: BLOCK DESIGN RECONSTRUCTION
   block_design: {
-    generateChallenge: (prng, difficulty, isHardMode) => {
+    generateChallenge: (prng, difficulty, isHardMode, trialIndex = 1) => {
       const tileTypes = ['SOLID_RED', 'SOLID_WHITE', 'SPLIT_DIAGONAL', 'SPLIT_ANTI_DIAGONAL'];
-      const dim = isHardMode ? 3 : 2;
+      const dim = isHardMode ? 3 : (difficulty > 5 || trialIndex > 6 ? 3 : 2);
       const totalCells = dim * dim;
 
       const targetPattern = Array.from({ length: totalCells }, () => {
-        const tileIdx = Math.min(prng.nextRange(0, tileTypes.length - 1), difficulty > 4 ? 3 : 2);
+        const tileIdx = Math.min(prng.nextRange(0, tileTypes.length - 1), difficulty > 4 || trialIndex > 4 ? 3 : 2);
         return tileTypes[tileIdx];
       });
+
+      const studyDurationMs = Math.max(1200, (isHardMode ? 2000 : 3500) - (trialIndex - 1) * 200);
 
       return {
         dimension: dim,
         targetPattern,
-        studyDurationMs: 3000,
-        exposureMs: 3000,
-        displayDurationMs: 3000,
+        studyDurationMs,
+        exposureMs: studyDurationMs,
+        displayDurationMs: studyDurationMs,
       };
     },
     calculateScore: (challenge, sessionResult) => {

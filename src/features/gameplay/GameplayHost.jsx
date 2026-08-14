@@ -119,7 +119,7 @@ export const GameplayHost = ({
     setTrialTimeLeftMs(null);
 
     const newSeed = seedRef.current + trialIndex * 1337;
-    const ch = createGameChallenge(game.id, newSeed, game.difficulty, hardModeActive);
+    const ch = createGameChallenge(game.id, newSeed, game.difficulty, hardModeActive, trialIndex);
     setChallenge(ch);
     setReactionStartMs(Date.now());
 

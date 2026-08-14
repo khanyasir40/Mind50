@@ -24,7 +24,7 @@ export const getAllGameEngines = () => {
 /**
  * Standardized Challenge Generator Entry Point with Anti-Ambiguity Retry & Hard Mode Support
  */
-export const createGameChallenge = (gameId, seed = Date.now(), difficulty = 1, isHardMode = false) => {
+export const createGameChallenge = (gameId, seed = Date.now(), difficulty = 1, isHardMode = false, trialIndex = 1) => {
   const engine = getGameEngine(gameId);
   const effectiveDifficulty = isHardMode ? Math.min(10, difficulty + 3) : difficulty;
 
@@ -36,7 +36,7 @@ export const createGameChallenge = (gameId, seed = Date.now(), difficulty = 1, i
     // Retry loop to ensure non-ambiguous challenge generation
     while (attempts < 10) {
       const prng = new PRNG(currentSeed);
-      challengePayload = engine.generateChallenge(prng, effectiveDifficulty, isHardMode);
+      challengePayload = engine.generateChallenge(prng, effectiveDifficulty, isHardMode, trialIndex);
       
       const ambiguityCheck = AntiAmbiguityValidator.validateChallenge(gameId, challengePayload);
       if (ambiguityCheck.valid) {
