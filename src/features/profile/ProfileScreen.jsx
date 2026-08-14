@@ -4,6 +4,7 @@ import { AuthService } from '../../core/auth/AuthService';
 import { NvCard } from '../../components/ui/NvCard';
 import { NvProgressBar } from '../../components/ui/NvProgressBar';
 import { NvButton } from '../../components/ui/NvButton';
+import { CreatorPublicCard } from '../creator/CreatorProfile';
 
 export const ProfileScreen = ({
   userState,
@@ -112,7 +113,7 @@ export const ProfileScreen = ({
       {/* Achievements Section */}
       <div>
         <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '14px' }}>
-          Achievements & Badges
+          Achievements &amp; Badges
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
           {achievementList.map((ach) => (
@@ -134,6 +135,14 @@ export const ProfileScreen = ({
             </NvCard>
           ))}
         </div>
+      </div>
+
+      {/* Developer / Creator Section */}
+      <div>
+        <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '14px' }}>
+          About the Developer
+        </h3>
+        <CreatorPublicCard />
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, Activity, ToggleLeft, ToggleRight, FileText, CheckCircle2, AlertTriangle, UserCheck, ShieldAlert, Award, Lock } from 'lucide-react';
+import { Shield, Users, Activity, ToggleLeft, ToggleRight, FileText, CheckCircle2, AlertTriangle, UserCheck, ShieldAlert, Award, Lock, Sparkles } from 'lucide-react';
 import { AuthService, USER_ROLES } from '../../core/auth/AuthService';
-import { getLeaderboards } from '../../data/storage';
+import { getLeaderboards, getDisabledGames, setGameDisabledStatus } from '../../data/storage';
 import { NvCard } from '../../components/ui/NvCard';
 import { NvPill } from '../../components/ui/NvPill';
 import { NvButton } from '../../components/ui/NvButton';
+import { CreatorProfileEditor } from '../creator/CreatorProfile';
 
 export const AdminConsoleScreen = ({ gamesCatalog }) => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -13,14 +14,13 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [leaderboards, setLeaderboards] = useState([]);
 
-  const [enabledGames, setEnabledGames] = useState(
-    gamesCatalog.reduce((acc, game) => ({ ...acc, [game.id]: true }), {})
-  );
+  const [disabledMap, setDisabledMap] = useState(() => getDisabledGames());
 
   const refreshData = () => {
     setAccounts(AuthService.getAccounts());
     setAuditLogs(AuthService.getAuditLogs());
     setLeaderboards(getLeaderboards());
+    setDisabledMap(getDisabledGames());
   };
 
   useEffect(() => {
@@ -67,7 +67,10 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
   };
 
   const toggleGame = (id) => {
-    setEnabledGames((prev) => ({ ...prev, [id]: !prev[id] }));
+    const isCurrentlyEnabled = !disabledMap[id];
+    const updatedDisabledMap = setGameDisabledStatus(id, isCurrentlyEnabled);
+    setDisabledMap(updatedDisabledMap);
+    AuthService.logSecurityEvent('GAME_TOGGLED', `Admin ${currentUser.name} ${isCurrentlyEnabled ? 'disabled' : 'enabled'} game: ${id}`);
   };
 
   return (
@@ -90,7 +93,7 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
       {/* Navigation Pills */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
         <NvPill active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
-          Overview & Metrics
+          Overview &amp; Metrics
         </NvPill>
         <NvPill active={activeTab === 'users'} onClick={() => setActiveTab('users')}>
           User Accounts ({accounts.length})
@@ -99,11 +102,17 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
           Game Engine Flags (50)
         </NvPill>
         <NvPill active={activeTab === 'anti-cheat'} onClick={() => setActiveTab('anti-cheat')}>
-          Anti-Cheat & Leaderboard
+          Anti-Cheat &amp; Leaderboard
         </NvPill>
         <NvPill active={activeTab === 'logs'} onClick={() => setActiveTab('logs')}>
           Audit Logs ({auditLogs.length})
         </NvPill>
+        {currentUser?.role === USER_ROLES.SUPER_ADMIN && (
+          <NvPill active={activeTab === 'creator'} onClick={() => setActiveTab('creator')}>
+            <Sparkles size={13} style={{ display: 'inline', marginRight: '4px' }} />
+            Creator Profile
+          </NvPill>
+        )}
       </div>
 
       {/* TAB 1: OVERVIEW */}
@@ -196,32 +205,50 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
       {/* TAB 3: GAME CATALOG FLAGS */}
       {activeTab === 'games' && (
         <NvCard padding="0px">
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', fontWeight: '800', color: 'var(--text-primary)' }}>
-            Game Engine Feature Controls (50 Audited Games)
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Game Engine Feature Controls (50 Audited Games)</span>
+            <span style={{ fontSize: '12px', color: 'var(--accent-primary)', fontWeight: '700' }}>
+              {gamesCatalog.length - Object.keys(disabledMap).length} / {gamesCatalog.length} Games Active
+            </span>
           </div>
-          {gamesCatalog.map((game, index) => (
-            <div
-              key={game.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 20px',
-                borderBottom: index < gamesCatalog.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-              }}
-            >
-              <div>
-                <h4 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>{game.name}</h4>
-                <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{game.category} • Difficulty {game.difficulty}</span>
-              </div>
-              <button
-                onClick={() => toggleGame(game.id)}
-                style={{ fontSize: '24px', color: enabledGames[game.id] ? 'var(--color-success)' : 'var(--text-tertiary)', cursor: 'pointer', background: 'none', border: 'none' }}
+          {gamesCatalog.map((game, index) => {
+            const isEnabled = !disabledMap[game.id];
+            return (
+              <div
+                key={game.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 20px',
+                  borderBottom: index < gamesCatalog.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                  opacity: isEnabled ? 1 : 0.6,
+                  background: isEnabled ? 'transparent' : 'var(--bg-surface-elevated)',
+                }}
               >
-                {enabledGames[game.id] ? <ToggleRight size={32} color="var(--color-success)" /> : <ToggleLeft size={32} />}
-              </button>
-            </div>
-          ))}
+                <div>
+                  <h4 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {game.name}
+                    {!isEnabled && (
+                      <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: 'var(--color-error-bg)', color: 'var(--color-error)', fontWeight: '800' }}>
+                        OFF FOR USERS
+                      </span>
+                    )}
+                  </h4>
+                  <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{game.category} • Difficulty {game.difficulty}</span>
+                </div>
+                <button
+                  onClick={() => toggleGame(game.id)}
+                  style={{ fontSize: '24px', color: isEnabled ? 'var(--color-success)' : 'var(--text-tertiary)', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <span style={{ fontSize: '12px', fontWeight: '800', color: isEnabled ? 'var(--color-success)' : 'var(--text-tertiary)' }}>
+                    {isEnabled ? 'ACTIVE' : 'DISABLED'}
+                  </span>
+                  {isEnabled ? <ToggleRight size={34} color="var(--color-success)" /> : <ToggleLeft size={34} color="var(--text-tertiary)" />}
+                </button>
+              </div>
+            );
+          })}
         </NvCard>
       )}
 
@@ -287,6 +314,11 @@ export const AdminConsoleScreen = ({ gamesCatalog }) => {
             )}
           </div>
         </NvCard>
+      )}
+
+      {/* TAB 6: CREATOR PROFILE (Super Admin only) */}
+      {activeTab === 'creator' && currentUser?.role === USER_ROLES.SUPER_ADMIN && (
+        <CreatorProfileEditor />
       )}
     </div>
   );

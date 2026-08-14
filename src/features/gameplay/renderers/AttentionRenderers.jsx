@@ -52,19 +52,22 @@ export const StroopRenderer = ({ challenge, onRespond }) => {
   );
 };
 
-// GAME 12 & 13: TRAIL MAKING A & B — with connection lines and trial timer
+// GAME 12 & 13: TRAIL MAKING A & B — with connection lines, wrong-tap red feedback, and trial timer
 export const TrailMakingRenderer = ({ challenge, onRespond }) => {
   const [userClicks, setUserClicks] = useState([]);
   const [errorCount, setErrorCount] = useState(0);
   const [lines, setLines] = useState([]);
+  const [wrongLabel, setWrongLabel] = useState(null);
   const trialStartRef = useRef(Date.now());
   const points = challenge.payload.points || [];
   const expectedSeq = challenge.payload.expectedSequence || [];
+  const isPartB = challenge.payload.isPartB;
 
   useEffect(() => {
     setUserClicks([]);
     setErrorCount(0);
     setLines([]);
+    setWrongLabel(null);
     trialStartRef.current = Date.now();
   }, [challenge]);
 
@@ -73,6 +76,7 @@ export const TrailMakingRenderer = ({ challenge, onRespond }) => {
     if (pt.label === nextExpected) {
       // Correct tap
       const next = [...userClicks, pt.label];
+      setWrongLabel(null);
       // Draw line from last to current
       if (next.length > 1) {
         const prevLabel = next[next.length - 2];
@@ -88,19 +92,26 @@ export const TrailMakingRenderer = ({ challenge, onRespond }) => {
         onRespond({ errorCount, trialTimeMs, totalTimeMs: trialTimeMs });
       }
     } else if (!userClicks.includes(pt.label)) {
-      // Wrong tap (not already tapped)
+      // Wrong tap — flash red
       setErrorCount(prev => prev + 1);
+      setWrongLabel(pt.label);
+      setTimeout(() => setWrongLabel(null), 500);
     }
   };
 
+  const nextTarget = expectedSeq[userClicks.length];
+
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-        Tap in order: <strong style={{ color: 'var(--accent-primary)' }}>{expectedSeq.join(' → ')}</strong>
+      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: '700' }}>
+        {isPartB ? '🔀 Alternate: 1 → A → 2 → B...' : '🔢 Ascending: 1 → 2 → 3...'}
       </div>
-      <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
-        Tapped: {userClicks.length}/{expectedSeq.length} | Errors: {errorCount}
+      <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
+        <span>Progress: <strong style={{ color: 'var(--accent-primary)' }}>{userClicks.length}/{expectedSeq.length}</strong></span>
+        <span>Errors: <strong style={{ color: errorCount > 0 ? 'var(--color-error)' : 'var(--text-tertiary)' }}>{errorCount}</strong></span>
+        {nextTarget && <span>Next: <strong style={{ color: 'var(--accent-primary)', fontSize: '14px' }}>{nextTarget}</strong></span>}
       </div>
+
       <div
         style={{
           position: 'relative',
@@ -111,6 +122,7 @@ export const TrailMakingRenderer = ({ challenge, onRespond }) => {
           background: 'var(--bg-surface)',
           borderRadius: 'var(--radius-xl)',
           border: '1px solid var(--border-light)',
+          overflow: 'hidden',
         }}
       >
         {/* Connection Lines SVG */}
@@ -123,8 +135,8 @@ export const TrailMakingRenderer = ({ challenge, onRespond }) => {
               x2={`${line.x2}%`}
               y2={`${line.y2}%`}
               stroke="var(--accent-primary)"
-              strokeWidth="2"
-              strokeOpacity="0.6"
+              strokeWidth="3"
+              strokeOpacity="0.8"
               strokeDasharray="4 3"
             />
           ))}
@@ -132,6 +144,7 @@ export const TrailMakingRenderer = ({ challenge, onRespond }) => {
 
         {points.map((pt) => {
           const isTapped = userClicks.includes(pt.label);
+          const isWrong = wrongLabel === pt.label;
 
           return (
             <button
@@ -144,13 +157,21 @@ export const TrailMakingRenderer = ({ challenge, onRespond }) => {
                 width: '44px',
                 height: '44px',
                 borderRadius: '50%',
-                background: isTapped ? 'var(--accent-primary)' : 'var(--bg-base)',
-                color: isTapped ? '#FFFFFF' : 'var(--text-primary)',
-                fontWeight: '800',
-                fontSize: '15px',
-                border: isTapped ? '2px solid var(--accent-primary)' : '2px solid var(--border-light)',
-                cursor: 'pointer',
-                boxShadow: isTapped ? '0 0 12px rgba(108,77,255,0.4)' : '0 3px 8px rgba(0,0,0,0.12)',
+                background: isWrong ? 'var(--color-error)' : isTapped ? 'var(--accent-primary)' : 'var(--bg-base)',
+                color: isWrong || isTapped ? '#FFFFFF' : 'var(--text-primary)',
+                fontWeight: '900',
+                fontSize: '16px',
+                border: isWrong
+                  ? '3px solid var(--color-error)'
+                  : isTapped
+                  ? '3px solid var(--accent-primary)'
+                  : '2px solid var(--border-light)',
+                cursor: isTapped ? 'default' : 'pointer',
+                boxShadow: isWrong
+                  ? '0 0 16px var(--color-error)'
+                  : isTapped
+                  ? '0 0 14px rgba(108,77,255,0.5)'
+                  : '0 3px 8px rgba(0,0,0,0.12)',
                 transform: 'translate(-50%, -50%)',
                 transition: 'all 0.15s ease',
                 zIndex: 2,

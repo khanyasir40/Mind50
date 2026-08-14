@@ -67,6 +67,7 @@ import {
   PatternCompletionRenderer,
   OddOneOutRenderer,
   LogicGridRenderer,
+  SequencePredictionRenderer,
   AbstractReasoningRenderer,
 } from './renderers/ReasoningRenderers';
 
@@ -123,7 +124,7 @@ export const GameplayHost = ({
     setReactionStartMs(Date.now());
 
     // Auto phase transition for memory/exposure games
-    if (['digit_span_forward', 'digit_span_backward', 'corsi_blocks', 'spatial_span', 'picture_recall', 'face_name_memory', 'paired_associates', 'object_location', 'visual_pattern_memory', 'map_navigation'].includes(game.id)) {
+    if (['digit_span_forward', 'digit_span_backward', 'corsi_blocks', 'spatial_span', 'picture_recall', 'face_name_memory', 'paired_associates', 'object_location', 'visual_pattern_memory', 'map_navigation', 'block_design'].includes(game.id)) {
       const delay = ch.payload.displayDurationMs || ch.payload.exposureMs || ch.payload.studyDurationMs || 2500;
       phaseTimeoutRef.current = setTimeout(() => {
         setTrialPhase('input');
@@ -153,6 +154,43 @@ export const GameplayHost = ({
     return () => clearInterval(timerId);
   }, [gameState]);
 
+  // Live Trial Countdown Timer Effect
+  useEffect(() => {
+    let timerId;
+    if (gameState === 'playing' && trialPhase === 'input' && challenge) {
+      const limitMs = challenge.payload.timeLimitMs || challenge.payload.durationMs || (isHardMode ? 7000 : 12000);
+      const startMs = Date.now();
+
+      timerId = setInterval(() => {
+        const remaining = Math.max(0, limitMs - (Date.now() - startMs));
+        setTrialTimeLeftMs(remaining);
+
+        if (remaining <= 0) {
+          clearInterval(timerId);
+          if (!isRespondingRef.current) {
+            isRespondingRef.current = true;
+            setFeedback('timeout');
+            setComboStreak(0);
+            setTimeout(() => {
+              if (currentTrial < totalTrials) {
+                setCurrentTrial(prev => prev + 1);
+                loadNextTrial(currentTrial + 1, isHardMode);
+              } else {
+                completeGameSession();
+              }
+            }, 700);
+          }
+        }
+      }, 50);
+    } else {
+      setTrialTimeLeftMs(null);
+    }
+
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
+  }, [gameState, trialPhase, challenge, currentTrial, totalTrials, isHardMode]);
+
   const handleUserResponse = (sessionResultPayload) => {
     if (gameState !== 'playing' || isRespondingRef.current) return;
     isRespondingRef.current = true;
@@ -165,7 +203,7 @@ export const GameplayHost = ({
     };
 
     const calculated = calculateGameScore(game.id, challenge, fullResultPayload);
-    const isCorrect = calculated.accuracy > 50;
+    const isCorrect = Boolean(calculated.isCorrect);
 
     if (isCorrect) {
       const newCombo = comboStreak + 1;
@@ -270,6 +308,26 @@ export const GameplayHost = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          {trialTimeLeftMs !== null && trialPhase === 'input' && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-full)',
+                background: trialTimeLeftMs < 3000 ? 'var(--color-error-bg)' : 'var(--accent-primary-light)',
+                color: trialTimeLeftMs < 3000 ? 'var(--color-error)' : 'var(--accent-primary)',
+                fontWeight: '800',
+                fontSize: '13px',
+                border: trialTimeLeftMs < 3000 ? '1px solid var(--color-error)' : '1px solid var(--border-light)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Clock size={15} />
+              {(trialTimeLeftMs / 1000).toFixed(1)}s
+            </div>
+          )}
           {comboStreak > 1 && (
             <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '2px' }}>
               <Flame size={14} /> {comboStreak}x COMBO
@@ -287,6 +345,15 @@ export const GameplayHost = ({
 
       {/* Progress Bar */}
       <NvProgressBar progress={(currentTrial / totalTrials) * 100} height={4} color={isHardMode ? 'var(--color-error)' : 'var(--accent-primary)'} />
+
+      {/* Dynamic Live Trial Time Limit Countdown Bar */}
+      {trialTimeLeftMs !== null && trialPhase === 'input' && challenge && (
+        <NvProgressBar
+          progress={(trialTimeLeftMs / (challenge.payload.timeLimitMs || (isHardMode ? 7000 : 12000))) * 100}
+          height={3}
+          color={trialTimeLeftMs < 3000 ? 'var(--color-error)' : 'var(--color-warning)'}
+        />
+      )}
 
       {/* Main Gameplay Arena Body */}
       <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
@@ -358,6 +425,11 @@ export const GameplayHost = ({
             {feedback === 'incorrect' && (
               <div style={{ color: 'var(--color-error)', fontWeight: '800', fontSize: '20px', marginBottom: '16px' }}>
                 ✗ Incorrect
+              </div>
+            )}
+            {feedback === 'timeout' && (
+              <div style={{ color: 'var(--color-warning)', fontWeight: '800', fontSize: '20px', marginBottom: '16px' }}>
+                ⏰ Time's Up!
               </div>
             )}
 
@@ -447,7 +519,7 @@ export const GameplayHost = ({
 
             {/* --- SPEED GAMES (31 - 36) --- */}
             {game.id === 'simple_reaction' && (
-              <SimpleReactionRenderer onRespond={handleUserResponse} />
+              <SimpleReactionRenderer challenge={challenge} onRespond={handleUserResponse} />
             )}
             {game.id === 'choice_reaction' && (
               <ChoiceReactionRenderer challenge={challenge} onRespond={handleUserResponse} />
@@ -470,7 +542,7 @@ export const GameplayHost = ({
               <MentalRotationRenderer challenge={challenge} onRespond={handleUserResponse} />
             )}
             {game.id === 'block_design' && (
-              <BlockDesignRenderer challenge={challenge} onRespond={handleUserResponse} />
+              <BlockDesignRenderer challenge={challenge} trialPhase={trialPhase} onRespond={handleUserResponse} />
             )}
             {game.id === 'mirror_image' && (
               <MirrorImageRenderer challenge={challenge} onRespond={handleUserResponse} />
@@ -498,7 +570,10 @@ export const GameplayHost = ({
             {game.id === 'logic_grid' && (
               <LogicGridRenderer challenge={challenge} onRespond={handleUserResponse} />
             )}
-            {(game.id === 'sequence_prediction' || game.id === 'abstract_reasoning') && (
+            {game.id === 'sequence_prediction' && (
+              <SequencePredictionRenderer challenge={challenge} onRespond={handleUserResponse} />
+            )}
+            {game.id === 'abstract_reasoning' && (
               <AbstractReasoningRenderer challenge={challenge} onRespond={handleUserResponse} />
             )}
 

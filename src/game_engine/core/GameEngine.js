@@ -81,7 +81,7 @@ export const createGameChallenge = (gameId, seed = Date.now(), difficulty = 1, i
  */
 export const calculateGameScore = (gameId, challenge, sessionResult) => {
   const engine = getGameEngine(gameId);
-  let result = { score: 0, accuracy: 0 };
+  let result = { score: 0, accuracy: 0, isCorrect: false };
 
   if (engine && typeof engine.calculateScore === 'function') {
     result = engine.calculateScore(challenge, sessionResult);
@@ -95,11 +95,22 @@ export const calculateGameScore = (gameId, challenge, sessionResult) => {
     result = {
       score: baseScore + difficultyBonus + speedBonus,
       accuracy,
+      isCorrect: accuracy === 100,
     };
   }
 
+  // Ensure isCorrect is explicitly determined
+  const isCorrect = result.isCorrect !== undefined ? Boolean(result.isCorrect) : (result.accuracy === 100);
+  result.isCorrect = isCorrect;
+
+  // Wrong answers MUST return 0 score & 0 accuracy
+  if (!isCorrect) {
+    result.score = 0;
+    result.accuracy = 0;
+  }
+
   // Hard Mode multiplier bonus (1.5x score)
-  if (challenge.isHardMode) {
+  if (challenge.isHardMode && isCorrect) {
     result.score = Math.round(result.score * 1.5);
   }
 
@@ -114,6 +125,7 @@ export const calculateGameScore = (gameId, challenge, sessionResult) => {
 
   return {
     ...result,
+    isCorrect,
     score: validation.valid ? validation.verifiedScore : 0,
     isValid: validation.valid,
     validationReason: validation.reason || null,

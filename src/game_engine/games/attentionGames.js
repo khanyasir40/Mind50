@@ -72,8 +72,9 @@ export const AttentionGames = {
         points.push({ id: i, label: `${i}`, x, y });
       }
       return {
-        points,
+        points: prng.shuffle([...points]),
         expectedSequence: points.map((p) => p.label),
+        isPartB: false,
         timeLimitMs: Math.max(5000, 18000 - difficulty * 1200),
       };
     },
@@ -114,8 +115,9 @@ export const AttentionGames = {
       });
 
       return {
-        points,
+        points: prng.shuffle([...points]),
         expectedSequence: sequence,
+        isPartB: true,
         timeLimitMs: Math.max(6000, 22000 - difficulty * 1400),
       };
     },
@@ -234,26 +236,35 @@ export const AttentionGames = {
 
       const targetSymbols = ['▲', '★', '◆', '●'];
       const distractorGroups = [
-        ['◯', '◯', '◯'], // circles
-        ['□', '□', '□'], // squares
         ['△', '△', '△'], // open triangles (similar to ▲)
-        ['◇', '◇', '◇'], // open diamonds
+        ['☆', '☆', '☆'], // open stars (similar to ★)
+        ['◇', '◇', '◇'], // open diamonds (similar to ◆)
+        ['◯', '◯', '◯'], // open circles (similar to ●)
       ];
 
-      const targetIdx = prng.nextRange(0, targetSymbols.length - 1);
-      const target = targetSymbols[targetIdx];
-      // Use similar-looking distractors for hard mode
+      const targetSymbolIdx = prng.nextRange(0, targetSymbols.length - 1);
+      const target = targetSymbols[targetSymbolIdx];
       const distractorPool = isHardMode
-        ? distractorGroups[targetIdx % distractorGroups.length]
-        : ['◯'];
+        ? distractorGroups[targetSymbolIdx]
+        : ['◯', '□', '△'];
 
       const distractorCount = Math.max(1, count - 1);
       const distractors = Array.from({ length: distractorCount }, () =>
         distractorPool[prng.nextRange(0, distractorPool.length - 1)]
       );
-      const rawItems = [...distractors, target];
-      const shuffled = prng.shuffle(rawItems);
-      const targetIndex = shuffled.indexOf(target);
+
+      // FIX: insert target at a known position BEFORE shuffling,
+      // then track that position through the shuffle — avoid indexOf() which
+      // can match a distractor that is the same symbol as target.
+      const insertAt = prng.nextRange(0, distractors.length);
+      const rawItems = [...distractors.slice(0, insertAt), target, ...distractors.slice(insertAt)];
+
+      // Shuffle while tracking target position
+      const indices = rawItems.map((_, i) => i);
+      const shuffledIndices = prng.shuffle(indices);
+      const shuffled = shuffledIndices.map(i => rawItems[i]);
+      // targetIndex = position of the original insertAt index in shuffledIndices
+      const targetIndex = shuffledIndices.indexOf(insertAt);
 
       const colors = ['#6C4DFF', '#39B982', '#E85D75', '#F0A83A', '#06B6D4', '#A855F7', '#EC4899'];
       const items = shuffled.map((symbol) => ({

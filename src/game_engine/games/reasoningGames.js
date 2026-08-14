@@ -334,6 +334,7 @@ export const ReasoningGames = {
   },
 
   // GAME 47: SEQUENCE PREDICTION — 8 sequence types with scaling difficulty
+  // FIX: distractors clamped to positive; options deduplicated to always show 4 unique choices
   sequence_prediction: {
     generateChallenge: (prng, difficulty) => {
       const seqPool = [
@@ -349,20 +350,24 @@ export const ReasoningGames = {
         { seq: [1, 2, 4, 7, 11], next: 16, rule: '+1, +2, +3... incrementing step' },
       ];
 
-      // Harder difficulties use trickier sequences
       const easyPool = seqPool.slice(0, 4);
-      const hardPool = seqPool.slice(4);
       const pool = difficulty > 5 ? [...seqPool] : easyPool;
-
       const chosen = pool[prng.nextRange(0, pool.length - 1)];
 
-      // Generate unique distractors that aren't equal to correct
-      const d1 = chosen.next + prng.nextRange(1, 5);
-      const d2 = chosen.next - prng.nextRange(1, 7);
-      const d3 = chosen.next * 2;
-      const distractors = [d1, d2 > 0 ? d2 : chosen.next + 9, d3].filter(d => d !== chosen.next);
+      // FIX: generate unique positive distractors
+      const correct = chosen.next;
+      const candidateDistractors = new Set();
+      const offsets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, -1, -2, -3, -4];
+      for (const off of offsets) {
+        const d = correct + off;
+        if (d > 0 && d !== correct) candidateDistractors.add(d);
+        if (candidateDistractors.size >= 6) break;
+      }
+      // Also add a multiplied distractor
+      if (correct * 2 !== correct) candidateDistractors.add(correct * 2);
+      const distractorArr = Array.from(candidateDistractors).filter(d => d !== correct).slice(0, 3);
 
-      const options = prng.shuffle([chosen.next, ...distractors.slice(0, 3)]);
+      const options = prng.shuffle([correct, ...distractorArr]);
 
       return {
         sequence: chosen.seq,

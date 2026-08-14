@@ -29,7 +29,6 @@ export const PlanningGames = {
         card,
         bins,
         activeRule,
-        ruleHint: difficulty < 4 ? `Sort by: ${activeRule}` : null, // Remove hint on harder difficulty
       };
     },
     calculateScore: (challenge, sessionResult) => {
@@ -51,7 +50,6 @@ export const PlanningGames = {
   // GAME 22: TOWER OF LONDON — 8 randomized pre-defined valid puzzles
   tower_of_london: {
     generateChallenge: (prng, difficulty) => {
-      // Each puzzle: [initialPegs, targetPegs, minMoves, diskCount]
       const puzzles = [
         { initial: [[1, 2, 3], [], []], target: [[], [1, 2], [3]], minMoves: 3, disks: 3 },
         { initial: [[1, 2, 3], [], []], target: [[], [], [1, 2, 3]], minMoves: 7, disks: 3 },
@@ -63,7 +61,6 @@ export const PlanningGames = {
         { initial: [[3, 1], [], [2]], target: [[], [3, 2, 1], []], minMoves: 6, disks: 3 },
       ];
 
-      // Harder difficulty = use harder puzzles
       const easyPuzzles = puzzles.slice(0, 4);
       const hardPuzzles = puzzles.slice(4);
       const pool = difficulty > 5 ? hardPuzzles : easyPuzzles;
@@ -80,10 +77,10 @@ export const PlanningGames = {
     calculateScore: (challenge, sessionResult) => {
       const moves = sessionResult.movesCount || 10;
       const optimal = challenge.payload.minMoves;
-      const isSuccess = sessionResult.isSolved;
+      const isSuccess = Boolean(sessionResult.isSolved);
       const efficiency = Math.max(0, 100 - (moves - optimal) * 12);
       const score = isSuccess ? 400 + Math.round(efficiency * 3.5) + challenge.difficulty * 40 : 0;
-      return { score, accuracy: isSuccess ? efficiency : 0 };
+      return { score, accuracy: isSuccess ? efficiency : 0, isCorrect: isSuccess };
     },
   },
 
@@ -95,18 +92,19 @@ export const PlanningGames = {
       return {
         diskCount,
         minMoves,
-        timeLimitMs: minMoves * 8000, // Generous limit scaled by complexity
+        timeLimitMs: minMoves * 8000,
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const moves = sessionResult.movesCount || 20;
       const minMoves = challenge.payload.minMoves;
-      const isSuccess = sessionResult.isSolved;
+      const isSuccess = Boolean(sessionResult.isSolved);
       const efficiency = Math.max(0, 100 - (moves - minMoves) * 8);
       const perfectBonus = moves === minMoves ? 200 : 0;
       return {
         score: isSuccess ? 450 + Math.round(efficiency * 3) + perfectBonus : 0,
         accuracy: isSuccess ? efficiency : 0,
+        isCorrect: isSuccess,
       };
     },
   },
@@ -169,23 +167,31 @@ export const PlanningGames = {
   },
 
   // GAME 25: DUAL TASK MULTITASKING
+  // FIX: math generator was prng.nextRange(1,1) which always equals 1 → replaced with proper random math
   dual_task: {
     generateChallenge: (prng, difficulty) => {
       const trackingTargetX = prng.nextRange(20, 80);
       const auditoryToneIsHigh = prng.nextRange(0, 1) === 1;
-      const mathQuestion = prng.nextRange(1, 1) === 1
-        ? { q: `${prng.nextRange(2, 9)} × ${prng.nextRange(2, 9)}`, type: 'math' }
+      const driftSpeedPct = 2 + Math.min(difficulty, 5);
+
+      // Generate a real math question for higher difficulty
+      const hasMath = difficulty > 3;
+      const mathA = prng.nextRange(2, 9);
+      const mathB = prng.nextRange(2, 9);
+      const mathQuestion = hasMath
+        ? { q: `${mathA} × ${mathB}`, answer: mathA * mathB, type: 'math' }
         : null;
 
       return {
         trackingTargetX,
         auditoryToneIsHigh,
         expectedToneResponse: auditoryToneIsHigh ? 'HIGH' : 'LOW',
-        driftSpeedPct: 2 + Math.min(difficulty, 5), // % per step, increases with difficulty
+        driftSpeedPct,
+        mathQuestion,
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const trackingAccuracy = sessionResult.trackingAccuracy || 70;
+      const trackingAccuracy = Math.max(0, Math.min(100, sessionResult.trackingAccuracy || 70));
       const toneCorrect = sessionResult.selectedTone === challenge.payload.expectedToneResponse;
 
       const accuracy = Math.round((trackingAccuracy + (toneCorrect ? 100 : 0)) / 2);
@@ -226,24 +232,57 @@ export const PlanningGames = {
     },
   },
 
-  // GAME 27: LABYRINTH ROUTE PLANNING — with actual walls
+  // GAME 27: LABYRINTH ROUTE PLANNING — with BFS solvability validation
+  // FIX: random walls could block the entire path; now BFS-validates and removes blocking walls
   maze_planning: {
     generateChallenge: (prng, difficulty) => {
       const gridDim = difficulty > 5 ? 7 : difficulty > 2 ? 6 : 5;
       const start = { x: 0, y: 0 };
       const end = { x: gridDim - 1, y: gridDim - 1 };
 
-      // Generate simple maze walls (not blocking the path entirely)
-      const wallSet = new Set();
+      // BFS to check if maze is solvable
+      const isSolvable = (walls) => {
+        const wallSet = new Set(walls);
+        const visited = new Set();
+        const queue = [`0,0`];
+        const goal = `${gridDim - 1},${gridDim - 1}`;
+        const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+        while (queue.length > 0) {
+          const cur = queue.shift();
+          if (cur === goal) return true;
+          if (visited.has(cur)) continue;
+          visited.add(cur);
+          const [cx, cy] = cur.split(',').map(Number);
+          for (const [dx, dy] of dirs) {
+            const nx = cx + dx, ny = cy + dy;
+            const key = `${nx},${ny}`;
+            if (nx >= 0 && ny >= 0 && nx < gridDim && ny < gridDim && !wallSet.has(key) && !visited.has(key)) {
+              queue.push(key);
+            }
+          }
+        }
+        return false;
+      };
+
+      // Generate walls, retry until maze is solvable
       const wallCount = Math.floor(gridDim * difficulty * 0.4);
-      for (let i = 0; i < wallCount; i++) {
-        const wx = prng.nextRange(0, gridDim - 1);
-        const wy = prng.nextRange(0, gridDim - 1);
-        // Don't block start or end
-        if (!(wx === 0 && wy === 0) && !(wx === gridDim - 1 && wy === gridDim - 1)) {
-          wallSet.add(`${wx},${wy}`);
+      let wallSet = new Set();
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const candidate = new Set();
+        for (let i = 0; i < wallCount; i++) {
+          const wx = prng.nextRange(0, gridDim - 1);
+          const wy = prng.nextRange(0, gridDim - 1);
+          if (!(wx === 0 && wy === 0) && !(wx === gridDim - 1 && wy === gridDim - 1)) {
+            candidate.add(`${wx},${wy}`);
+          }
+        }
+        if (isSolvable(Array.from(candidate))) {
+          wallSet = candidate;
+          break;
         }
       }
+      // If still no valid maze, use empty walls (always solvable)
+      if (!isSolvable(Array.from(wallSet))) wallSet = new Set();
 
       const minSteps = gridDim * 2 - 2;
 
@@ -258,9 +297,9 @@ export const PlanningGames = {
     calculateScore: (challenge, sessionResult) => {
       const steps = sessionResult.stepsCount || 12;
       const minSteps = challenge.payload.minSteps;
-      const isReached = sessionResult.reachedExit;
+      const isReached = Boolean(sessionResult.reachedExit);
       const efficiency = Math.max(0, 100 - (steps - minSteps) * 8);
-      return { score: isReached ? 350 + Math.round(efficiency * 2.5) : 0, accuracy: isReached ? efficiency : 0 };
+      return { score: isReached ? 350 + Math.round(efficiency * 2.5) : 0, accuracy: isReached ? efficiency : 0, isCorrect: isReached };
     },
   },
 
@@ -323,22 +362,25 @@ export const PlanningGames = {
   },
 
   // GAME 29: SERIAL SUBTRACTION SPEED — multi-step chains
+  // FIX: raised startValue floor so doubleStep never produces a negative/zero answer
   serial_subtraction: {
     generateChallenge: (prng, difficulty) => {
-      const startValue = prng.nextRange(80, 150);
+      const doubleStep = difficulty > 6;
       const stepOptions = [3, 7, 13, 17];
       const stepIdx = Math.min(Math.floor(difficulty / 2.5), stepOptions.length - 1);
       const step = stepOptions[stepIdx];
-      const expected = startValue - step;
 
-      // In harder difficulties, require TWO subtractions
-      const doubleStep = difficulty > 6;
-      const expected2 = doubleStep ? expected - step : null;
+      // Minimum start value: ensure two subtractions remain positive
+      const minStart = doubleStep ? step * 3 + 10 : step + 5;
+      const startValue = prng.nextRange(Math.max(minStart, 80), Math.max(minStart + 80, 200));
+
+      const expected1 = startValue - step;
+      const expected2 = expected1 - step;
 
       return {
         startValue,
         step,
-        expected: doubleStep ? expected2 : expected,
+        expected: doubleStep ? expected2 : expected1,
         displayValue: doubleStep ? `${startValue} − ${step} − ${step}` : `${startValue} − ${step}`,
         doubleStep,
       };

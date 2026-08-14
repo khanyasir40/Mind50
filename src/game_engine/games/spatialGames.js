@@ -67,10 +67,13 @@ export const SpatialGames = {
       return {
         dimension: dim,
         targetPattern,
+        studyDurationMs: 3000,
+        exposureMs: 3000,
+        displayDurationMs: 3000,
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const target = challenge.payload.targetPattern;
+      const target = challenge.payload.targetPattern || [];
       const user = sessionResult.userPattern || [];
       let matches = 0;
 
@@ -78,9 +81,8 @@ export const SpatialGames = {
         if (user[i] === target[i]) matches++;
       }
 
-      const accuracy = Math.round((matches / target.length) * 100);
-      const isCorrect = accuracy === 100;
-      return { score: Math.round(accuracy * 4 + challenge.difficulty * 35 + (isCorrect ? 200 : 0)), accuracy };
+      const isCorrect = target.length > 0 && matches === target.length;
+      return { score: isCorrect ? Math.round(100 * 4 + challenge.difficulty * 35 + 200) : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 

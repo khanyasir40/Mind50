@@ -10,9 +10,9 @@ import { AdminConsoleScreen } from './features/admin/AdminConsoleScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 import { GameplayHost } from './features/gameplay/GameplayHost';
 import { AiCoachDrawer } from './features/ai/AiCoachDrawer';
-import { AuthModalScreen } from './features/auth/AuthModalScreen';
+import { AuthModalScreen, AuthFullPage } from './features/auth/AuthModalScreen';
 import { GAMES_CATALOG } from './game_engine/catalog';
-import { loadUserState, saveUserState, recordGameAttempt } from './data/storage';
+import { loadUserState, saveUserState, recordGameAttempt, getDisabledGames } from './data/storage';
 import { AuthService } from './core/auth/AuthService';
 
 export function App() {
@@ -21,6 +21,23 @@ export function App() {
   const [activeGameId, setActiveGameId] = useState(null);
   const [isAiCoachOpen, setIsAiCoachOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // Show full-screen login on first visit until user logs in or skips
+  const [showAuthGate, setShowAuthGate] = useState(() => {
+    const session = AuthService.getActiveSession();
+    const hasSeenGate = sessionStorage.getItem('mind50_gate_seen');
+    return !session && !hasSeenGate;
+  });
+
+  const [disabledGames, setDisabledGames] = useState(() => getDisabledGames());
+
+  // Listen for admin game flag changes in real-time
+  useEffect(() => {
+    const handleFlagsChanged = (e) => {
+      setDisabledGames(e.detail || getDisabledGames());
+    };
+    window.addEventListener('mind50_game_flags_changed', handleFlagsChanged);
+    return () => window.removeEventListener('mind50_game_flags_changed', handleFlagsChanged);
+  }, []);
 
   // Apply Theme attribute on html element
   useEffect(() => {
@@ -51,7 +68,13 @@ export function App() {
     return result;
   };
 
+  const activeCatalog = GAMES_CATALOG.filter(g => !disabledGames[g.id]);
+
   const handleLaunchGame = (gameId) => {
+    if (disabledGames[gameId]) {
+      alert('This game has been temporarily disabled by the platform administrator.');
+      return;
+    }
     setActiveGameId(gameId);
   };
 
@@ -81,10 +104,34 @@ export function App() {
 
   const handleLogout = () => {
     AuthService.logout();
+    // Show login gate again on logout
+    sessionStorage.removeItem('mind50_gate_seen');
+    setShowAuthGate(true);
     reloadState();
   };
 
+  const handleAuthGateSuccess = (session) => {
+    sessionStorage.setItem('mind50_gate_seen', '1');
+    setShowAuthGate(false);
+    reloadState();
+  };
+
+  const handleAuthGateSkip = () => {
+    sessionStorage.setItem('mind50_gate_seen', '1');
+    setShowAuthGate(false);
+  };
+
   const activeGameDefinition = GAMES_CATALOG.find((g) => g.id === activeGameId);
+
+  // ── Full-screen Auth Gate (first visit) ──────────────────────────────────
+  if (showAuthGate) {
+    return (
+      <AuthFullPage
+        onAuthSuccess={handleAuthGateSuccess}
+        onSkip={handleAuthGateSkip}
+      />
+    );
+  }
 
   return (
     <>
@@ -103,17 +150,20 @@ export function App() {
         {currentTab === 'home' && (
           <HomeScreen
             userState={userState}
-            gamesCatalog={GAMES_CATALOG}
+            gamesCatalog={activeCatalog}
             onLaunchGame={handleLaunchGame}
             onStartQuickTrain={() => setCurrentTab('train')}
-            onStartDailyChallenge={() => handleLaunchGame('digit_span_forward')}
+            onStartDailyChallenge={() => {
+              const daily = activeCatalog.find(g => g.id === 'digit_span_forward') || activeCatalog[0];
+              if (daily) handleLaunchGame(daily.id);
+            }}
             onNavigateTab={setCurrentTab}
           />
         )}
 
         {currentTab === 'games' && (
           <GamesLibraryScreen
-            gamesCatalog={GAMES_CATALOG}
+            gamesCatalog={activeCatalog}
             gameProgress={userState.gameProgress}
             onLaunchGame={handleLaunchGame}
           />
@@ -123,8 +173,10 @@ export function App() {
           <QuickTrainScreen
             userScores={userState.scores}
             onStartSession={(count) => {
-              const randomGame = GAMES_CATALOG[Math.floor(Math.random() * GAMES_CATALOG.length)].id;
-              handleLaunchGame(randomGame);
+              if (activeCatalog.length > 0) {
+                const randomGame = activeCatalog[Math.floor(Math.random() * activeCatalog.length)].id;
+                handleLaunchGame(randomGame);
+              }
             }}
           />
         )}
@@ -166,11 +218,12 @@ export function App() {
         userState={userState}
       />
 
-      {/* Authentication Modal */}
+      {/* Authentication Modal (in-app, e.g. from profile button) */}
       <AuthModalScreen
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={() => {
+          sessionStorage.setItem('mind50_gate_seen', '1');
           reloadState();
         }}
       />

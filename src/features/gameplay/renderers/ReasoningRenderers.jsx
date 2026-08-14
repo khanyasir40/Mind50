@@ -150,7 +150,7 @@ export const PatternCompletionRenderer = ({ challenge, onRespond }) => {
 export const OddOneOutRenderer = ({ challenge, onRespond }) => (
   <div style={{ textAlign: 'center' }}>
     <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', padding: '8px 16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', display: 'inline-block', border: '1px solid var(--border-light)' }}>
-      🔍 Rule: <strong>{challenge.payload.ruleDescription}</strong> Find the ODD one out!
+      🔍 Identify the item that does <strong style={{ color: 'var(--accent-primary)' }}>NOT belong</strong> with the others:
     </div>
     <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxWidth: '380px', margin: '16px auto 0' }}>
       {challenge.payload.items.map((item) => {
@@ -270,7 +270,56 @@ export const LogicGridRenderer = ({ challenge, onRespond }) => {
   );
 };
 
-// GAME 47 & 48: SEQUENCE PREDICTION & ABSTRACT RULE SOLVER — combined renderer
+// GAME 47: SEQUENCE PREDICTION — dedicated number-sequence renderer
+// FIX: was sharing AbstractReasoningRenderer causing text/number display mismatch
+export const SequencePredictionRenderer = ({ challenge, onRespond }) => {
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    startRef.current = Date.now();
+  }, [challenge]);
+
+  const sequence = challenge.payload.sequence || [];
+  const options = challenge.payload.options || [];
+  const rule = challenge.payload.rule || '';
+
+  return (
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', padding: '6px 14px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', display: 'inline-block', border: '1px solid var(--border-light)' }}>
+        🔢 Find the next number in the pattern:
+      </div>
+
+      {/* Sequence display */}
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', flexWrap: 'wrap', padding: '20px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '2px solid var(--border-light)', maxWidth: '400px', margin: '0 auto 24px' }}>
+        {sequence.map((num, i) => (
+          <span key={i} style={{ fontSize: '28px', fontWeight: '900', color: 'var(--text-primary)' }}>
+            {num}
+            {i < sequence.length - 1 && <span style={{ color: 'var(--text-tertiary)', fontSize: '20px', margin: '0 4px' }}>,</span>}
+          </span>
+        ))}
+        <span style={{ fontSize: '28px', fontWeight: '900', color: 'var(--text-tertiary)' }}>,</span>
+        <span style={{ fontSize: '32px', fontWeight: '900', color: 'var(--accent-primary)', borderBottom: '3px solid var(--accent-primary)', minWidth: '48px', display: 'inline-block' }}>?</span>
+      </div>
+
+      {/* Number option buttons */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', maxWidth: '320px', margin: '0 auto' }}>
+        {options.map((opt, i) => (
+          <NvButton
+            key={i}
+            variant="secondary"
+            size="lg"
+            onClick={() => onRespond({ selectedOption: opt, reactionTimeMs: Date.now() - startRef.current })}
+            style={{ fontSize: '22px', fontWeight: '900' }}
+          >
+            {opt}
+          </NvButton>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// GAME 48: ABSTRACT RULE SOLVER
 export const AbstractReasoningRenderer = ({ challenge, onRespond }) => {
   const startRef = useRef(Date.now());
 
@@ -278,35 +327,22 @@ export const AbstractReasoningRenderer = ({ challenge, onRespond }) => {
     startRef.current = Date.now();
   }, [challenge]);
 
-  const isSequence = !!challenge.payload.sequence;
+  const rule = challenge.payload.transformationRule || challenge.payload.rule || '';
+  const prompt = challenge.payload.promptShape || '';
+  const options = challenge.payload.options || [];
 
   return (
-    <div style={{ textAlign: 'center' }}>
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
       <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px', padding: '8px 16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', display: 'inline-block', border: '1px solid var(--border-light)' }}>
-        {isSequence
-          ? `🔢 Rule: ${challenge.payload.rule}`
-          : `🔄 Transformation: ${challenge.payload.transformationRule}`}
+        🔄 Transformation: <strong style={{ color: 'var(--accent-primary)' }}>{rule}</strong>
       </div>
 
-      <div
-        style={{
-          fontSize: isSequence ? '28px' : '20px',
-          fontWeight: '800',
-          color: 'var(--accent-primary)',
-          margin: '20px 0 28px',
-          padding: '16px',
-          background: 'var(--bg-surface)',
-          borderRadius: 'var(--radius-xl)',
-          border: '1px solid var(--border-light)',
-        }}
-      >
-        {isSequence
-          ? `${challenge.payload.sequence.join(' , ')} , ?`
-          : challenge.payload.promptShape}
+      <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--accent-primary)', padding: '16px 20px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)', maxWidth: '380px', margin: '12px auto 24px' }}>
+        {prompt}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', maxWidth: '360px', margin: '0 auto' }}>
-        {challenge.payload.options.map((opt, i) => (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', maxWidth: '380px', margin: '0 auto' }}>
+        {options.map((opt, i) => (
           <NvButton
             key={i}
             variant="secondary"

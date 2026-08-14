@@ -7,6 +7,33 @@ import { ServerScoringValidator } from '../game_engine/core/ServerScoringValidat
 
 const STORAGE_KEY_PREFIX = 'neurovault_user_state_';
 const GLOBAL_LEADERBOARD_KEY = 'neurovault_global_leaderboard_v1';
+const DISABLED_GAMES_KEY = 'mind50_disabled_games_v1';
+
+export const getDisabledGames = () => {
+  try {
+    const raw = localStorage.getItem(DISABLED_GAMES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const setGameDisabledStatus = (gameId, isDisabled) => {
+  const current = getDisabledGames();
+  if (isDisabled) {
+    current[gameId] = true;
+  } else {
+    delete current[gameId];
+  }
+  localStorage.setItem(DISABLED_GAMES_KEY, JSON.stringify(current));
+  window.dispatchEvent(new CustomEvent('mind50_game_flags_changed', { detail: current }));
+  return current;
+};
+
+export const isGameDisabled = (gameId) => {
+  const disabledMap = getDisabledGames();
+  return !!disabledMap[gameId];
+};
 
 const defaultState = {
   user: {

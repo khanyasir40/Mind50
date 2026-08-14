@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MEMORY GAMES (01 - 10) ENGINE — ENHANCED & POLISHED
+   MEMORY GAMES (01 - 10) ENGINE — ENHANCED & FULLY FIXED (payload aligned)
    ========================================================================== */
 
 export const MemoryGames = {
@@ -22,15 +22,11 @@ export const MemoryGames = {
       const expected = challenge.payload.expected;
       const got = sessionResult.userInput || '';
       const isCorrect = got === expected;
-
-      // Partial credit: number of chars matched
-      let matchCount = 0;
-      for (let i = 0; i < Math.min(expected.length, got.length); i++) {
-        if (expected[i] === got[i]) matchCount++;
-      }
-      const accuracy = expected.length > 0 ? Math.round((matchCount / expected.length) * 100) : 0;
-      const score = Math.round(accuracy * 3 + challenge.difficulty * 30 + (isCorrect ? 200 : 0));
-      return { score, accuracy };
+      return {
+        score: isCorrect ? Math.round(100 * 3 + challenge.difficulty * 30 + 200) : 0,
+        accuracy: isCorrect ? 100 : 0,
+        isCorrect,
+      };
     },
   },
 
@@ -53,13 +49,11 @@ export const MemoryGames = {
       const expected = challenge.payload.expected;
       const got = sessionResult.userInput || '';
       const isCorrect = got === expected;
-
-      let matchCount = 0;
-      for (let i = 0; i < Math.min(expected.length, got.length); i++) {
-        if (expected[i] === got[i]) matchCount++;
-      }
-      const accuracy = expected.length > 0 ? Math.round((matchCount / expected.length) * 100) : 0;
-      return { score: Math.round(accuracy * 3.5 + challenge.difficulty * 35 + (isCorrect ? 250 : 0)), accuracy };
+      return {
+        score: isCorrect ? Math.round(100 * 3.5 + challenge.difficulty * 35 + 250) : 0,
+        accuracy: isCorrect ? 100 : 0,
+        isCorrect,
+      };
     },
   },
 
@@ -68,9 +62,7 @@ export const MemoryGames = {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const seqLen = (isHardMode ? 6 : 3) + Math.min(difficulty, 6);
       const gridSize = 9;
-      const gridRows = 3;
 
-      // Ensure no adjacent repeats for harder sequences
       const sequence = [];
       for (let i = 0; i < seqLen; i++) {
         let next;
@@ -85,50 +77,61 @@ export const MemoryGames = {
       return {
         sequence,
         gridSize,
-        gridRows,
+        gridRows: 3,
+        stepMs,
         displayStepMs: stepMs,
         exposureMs: sequence.length * stepMs + 800,
+        displayDurationMs: sequence.length * stepMs + 800,
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const expected = challenge.payload.sequence;
+      const expected = challenge.payload.sequence || [];
       const got = sessionResult.userSequence || [];
-      let hits = 0;
-      for (let i = 0; i < Math.min(expected.length, got.length); i++) {
-        if (expected[i] === got[i]) hits++;
-      }
-      const accuracy = expected.length > 0 ? Math.round((hits / expected.length) * 100) : 0;
-      return { score: Math.round(accuracy * 4 + challenge.difficulty * 40 + (accuracy === 100 ? 200 : 0)), accuracy };
+      const isCorrect = expected.length > 0 && expected.length === got.length && expected.every((val, i) => val === got[i]);
+      return {
+        score: isCorrect ? Math.round(100 * 4 + challenge.difficulty * 40 + 200) : 0,
+        accuracy: isCorrect ? 100 : 0,
+        isCorrect,
+      };
     },
   },
 
   // GAME 04: SPATIAL SPAN
   spatial_span: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const count = (isHardMode ? 7 : 4) + Math.min(difficulty, 6);
-      const gridSize = 16;
-      const targetIndices = new Set();
-      while (targetIndices.size < Math.min(count, gridSize)) {
-        targetIndices.add(prng.nextRange(0, gridSize - 1));
+      const seqLen = (isHardMode ? 6 : 3) + Math.min(difficulty, 6);
+      const gridSize = 9;
+
+      const sequence = [];
+      for (let i = 0; i < seqLen; i++) {
+        let next;
+        do {
+          next = prng.nextRange(0, gridSize - 1);
+        } while (sequence.length > 0 && next === sequence[sequence.length - 1]);
+        sequence.push(next);
       }
 
+      const stepMs = Math.max(400, (isHardMode ? 500 : 800) - difficulty * 50);
+
       return {
-        targetIndices: Array.from(targetIndices),
+        sequence,
         gridSize,
-        studyDurationMs: 3000 + difficulty * 300,
+        gridRows: 3,
+        stepMs,
+        displayStepMs: stepMs,
+        exposureMs: sequence.length * stepMs + 800,
+        displayDurationMs: sequence.length * stepMs + 800,
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const targets = new Set(challenge.payload.targetIndices);
-      const userSelected = new Set(sessionResult.selectedIndices || []);
-
-      let hits = 0;
-      let falseAlarms = 0;
-      targets.forEach(t => { if (userSelected.has(t)) hits++; });
-      userSelected.forEach(s => { if (!targets.has(s)) falseAlarms++; });
-
-      const accuracy = Math.round((hits / targets.size) * 100);
-      return { score: Math.max(0, hits * 120 - falseAlarms * 60 + challenge.difficulty * 30), accuracy };
+      const expected = challenge.payload.sequence || [];
+      const got = sessionResult.userSequence || [];
+      const isCorrect = expected.length > 0 && expected.length === got.length && expected.every((val, i) => val === got[i]);
+      return {
+        score: isCorrect ? Math.round(100 * 4 + challenge.difficulty * 40 + 200) : 0,
+        accuracy: isCorrect ? 100 : 0,
+        isCorrect,
+      };
     },
   },
 
@@ -136,48 +139,52 @@ export const MemoryGames = {
   picture_recall: {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const objectPools = [
-        { icon: '🍎', name: 'Apple', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
-        { icon: '📚', name: 'Books', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
-        { icon: '🕯️', name: 'Candle', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
-        { icon: '⏰', name: 'Clock', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
-        { icon: '🗝️', name: 'Key', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
-        { icon: '🌹', name: 'Rose', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
-        { icon: '🔦', name: 'Torch', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
-        { icon: '🎭', name: 'Mask', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
-        { icon: '💎', name: 'Gem', positions: ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center'] },
+        { icon: '🍎', name: 'Apple' },
+        { icon: '📚', name: 'Books' },
+        { icon: '🕯️', name: 'Candle' },
+        { icon: '⏰', name: 'Clock' },
+        { icon: '🗝️', name: 'Key' },
+        { icon: '🌹', name: 'Rose' },
+        { icon: '🔦', name: 'Torch' },
+        { icon: '🎭', name: 'Mask' },
+        { icon: '💎', name: 'Gem' },
+        { icon: '🪩', name: 'Disco Ball' },
+        { icon: '🧲', name: 'Magnet' },
+        { icon: '🔭', name: 'Telescope' },
       ];
 
+      const positionList = ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center', 'Mid-Left', 'Mid-Right', 'Top-Center', 'Bottom-Center'];
       const count = isHardMode ? 9 : 4 + Math.min(difficulty, 5);
       const shuffled = prng.shuffle([...objectPools]);
       const selectedObjects = shuffled.slice(0, Math.min(count, shuffled.length));
-
-      const positionList = ['Top-Left', 'Top-Right', 'Bottom-Left', 'Bottom-Right', 'Center', 'Mid-Left', 'Mid-Right', 'Top-Center', 'Bottom-Center'];
       const shuffledPositions = prng.shuffle([...positionList]);
 
-      const sceneLayout = selectedObjects.map((obj, i) => ({
+      const items = selectedObjects.map((obj, i) => ({
         icon: obj.icon,
         name: obj.name,
         position: shuffledPositions[i % shuffledPositions.length],
       }));
 
-      const target = sceneLayout[prng.nextRange(0, sceneLayout.length - 1)];
+      const target = items[prng.nextRange(0, items.length - 1)];
       const correctPos = target.position;
       const wrongPositions = positionList.filter(p => p !== correctPos);
-      const choices = prng.shuffle([correctPos, ...wrongPositions.slice(0, 3)]);
+      const options = prng.shuffle([correctPos, ...wrongPositions.slice(0, 3)]);
 
       return {
-        sceneLayout,
+        items,
         question: `Where was the ${target.name}?`,
         targetName: target.name,
+        targetIcon: target.icon,
         correctAnswer: correctPos,
-        choices,
+        options,
         studyDurationMs: isHardMode ? 3500 : 5000,
         exposureMs: isHardMode ? 3500 : 5000,
+        displayDurationMs: isHardMode ? 3500 : 5000,
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.userAnswer === challenge.payload.correctAnswer;
-      return { score: isCorrect ? 300 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 300 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
@@ -212,6 +219,8 @@ export const MemoryGames = {
       return {
         pairs,
         targetPair,
+        targetAvatar: targetPair.avatar,
+        nameOptions: options,
         options,
         studyDurationMs: isHardMode ? 4000 : 5500,
         displayDurationMs: isHardMode ? 4000 : 5500,
@@ -219,7 +228,7 @@ export const MemoryGames = {
     },
     calculateScore: (challenge, sessionResult) => {
       const isCorrect = sessionResult.selectedName === challenge.payload.targetPair.name;
-      return { score: isCorrect ? 280 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 280 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
@@ -227,64 +236,101 @@ export const MemoryGames = {
   paired_associates: {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const symbolPairs = [
-        ['★', '◯'], ['◆', '△'], ['♠', '♥'], ['✦', '▽'],
-        ['⊙', '◈'], ['☽', '✺'], ['⊞', '⊘'], ['⟁', '⊗'],
+        { symbolA: '★', symbolB: '◯' },
+        { symbolA: '◆', symbolB: '△' },
+        { symbolA: '♠', symbolB: '♥' },
+        { symbolA: '✦', symbolB: '▽' },
+        { symbolA: '⊙', symbolB: '◈' },
+        { symbolA: '☽', symbolB: '✺' },
+        { symbolA: '⊞', symbolB: '⊘' },
+        { symbolA: '⟁', symbolB: '⊗' },
       ];
 
       const count = isHardMode ? 5 : 2 + Math.min(difficulty, 4);
       const shuffledPairs = prng.shuffle([...symbolPairs]);
       const selected = shuffledPairs.slice(0, count);
 
-      const pairs = selected.map(([a, b]) => ({
-        symbolA: a,
-        symbolB: b,
-      }));
-
-      const targetIdx = prng.nextRange(0, pairs.length - 1);
-      const targetPair = pairs[targetIdx];
-      const wrongSymbols = shuffledPairs.slice(count).map(p => p[1]);
-      const options = prng.shuffle([targetPair.symbolB, ...wrongSymbols.slice(0, 4)]);
+      const targetIdx = prng.nextRange(0, selected.length - 1);
+      const targetPair = selected[targetIdx];
+      const wrongSymbols = shuffledPairs.slice(count).map(p => p.symbolB);
+      const allWrong = [...selected.filter((_, i) => i !== targetIdx).map(p => p.symbolB), ...wrongSymbols];
+      const options = prng.shuffle([targetPair.symbolB, ...allWrong.slice(0, 3)]);
 
       return {
-        pairs,
+        pairs: selected.map(p => ({ avatar: p.symbolA, name: p.symbolB })),
+        targetPair,
         promptSymbol: targetPair.symbolA,
         correctPartner: targetPair.symbolB,
+        targetAvatar: targetPair.symbolA,
+        nameOptions: options,
         options,
         studyDurationMs: isHardMode ? 3500 : 5000,
         displayDurationMs: isHardMode ? 3500 : 5000,
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const isCorrect = sessionResult.selectedPartner === challenge.payload.correctPartner;
-      return { score: isCorrect ? 290 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0 };
+      const isCorrect =
+        sessionResult.selectedPartner === challenge.payload.correctPartner ||
+        sessionResult.selectedName === challenge.payload.correctPartner;
+      return { score: isCorrect ? 290 + challenge.difficulty * 35 : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
   // GAME 08: OBJECT LOCATION MEMORY
   object_location: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const objects = ['🍎', '📚', '🕯️', '⏰', '🗝️', '🌹'];
-      const item = objects[prng.nextRange(0, objects.length - 1)];
-      const row = prng.nextRange(0, 2);
-      const col = prng.nextRange(0, 2);
+      const objects = [
+        { symbol: '🍎', name: 'Apple' },
+        { symbol: '📚', name: 'Books' },
+        { symbol: '🕯️', name: 'Candle' },
+        { symbol: '⏰', name: 'Clock' },
+        { symbol: '🗝️', name: 'Key' },
+        { symbol: '🌹', name: 'Rose' },
+        { symbol: '🔦', name: 'Torch' },
+        { symbol: '💎', name: 'Gem' },
+        { symbol: '🧲', name: 'Magnet' },
+      ];
+
+      const gridDim = isHardMode ? 4 : (difficulty > 5 ? 4 : 3);
+      const totalCells = gridDim * gridDim;
+
+      const itemCount = isHardMode ? 4 : 2 + Math.min(difficulty, 3);
+      const shuffledObjects = prng.shuffle([...objects]);
+      const selectedObjects = shuffledObjects.slice(0, itemCount);
+
+      const usedCells = new Set();
+      const items = selectedObjects.map(obj => {
+        let cellIdx;
+        do { cellIdx = prng.nextRange(0, totalCells - 1); } while (usedCells.has(cellIdx));
+        usedCells.add(cellIdx);
+        return {
+          ...obj,
+          cellIdx,
+          row: Math.floor(cellIdx / gridDim),
+          col: cellIdx % gridDim,
+        };
+      });
+
+      const targetItem = items[prng.nextRange(0, items.length - 1)];
+      const gridOptions = Array.from({ length: totalCells }, (_, i) => i);
 
       return {
-        item,
-        targetCell: { row, col },
-        studyDurationMs: Math.max(1200, (isHardMode ? 1500 : 3000) - difficulty * 200),
-        displayDurationMs: Math.max(1200, (isHardMode ? 1500 : 3000) - difficulty * 200),
+        items,
+        targetItem,
+        targetCell: { row: targetItem.row, col: targetItem.col },
+        correctCellIdx: targetItem.cellIdx,
+        gridOptions,
+        gridDim,
+        totalCells,
+        studyDurationMs: Math.max(1500, (isHardMode ? 2000 : 3500) - difficulty * 200),
+        displayDurationMs: Math.max(1500, (isHardMode ? 2000 : 3500) - difficulty * 200),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const target = challenge.payload.targetCell;
-      const selected = sessionResult.selectedCell || {};
-      const isCorrect = selected.row === target.row && selected.col === target.col;
-
-      // Partial credit for one-off positions
-      const rowDiff = Math.abs((selected.row ?? -9) - target.row);
-      const colDiff = Math.abs((selected.col ?? -9) - target.col);
-      const accuracy = isCorrect ? 100 : (rowDiff + colDiff) <= 1 ? 50 : 0;
-      return { score: Math.round(accuracy * 3.5 + challenge.difficulty * 30), accuracy };
+      const target = challenge.payload.correctCellIdx;
+      const selected = sessionResult.selectedCellIdx ?? sessionResult.selectedIndex;
+      const isCorrect = selected === target;
+      return { score: isCorrect ? Math.round(100 * 3.5 + challenge.difficulty * 30) : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
@@ -299,7 +345,6 @@ export const MemoryGames = {
       ];
 
       const seqLen = (isHardMode ? 6 : 3) + Math.min(difficulty, 6);
-      // Ensure no two consecutive identical flashes (makes it harder to track)
       const sequence = [];
       for (let i = 0; i < seqLen; i++) {
         let idx;
@@ -308,25 +353,23 @@ export const MemoryGames = {
         sequence.push(idx);
       }
 
-      const speedMs = Math.max(350, (isHardMode ? 400 : 700) - difficulty * 50);
+      const stepMs = Math.max(350, (isHardMode ? 400 : 700) - difficulty * 50);
 
       return {
         items: itemColors,
         sequence,
         expected: sequence,
-        speedMs,
-        displayDurationMs: sequence.length * speedMs + 800,
+        stepMs,
+        displayStepMs: stepMs,
+        speedMs: stepMs,
+        displayDurationMs: sequence.length * stepMs + 800,
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const expected = challenge.payload.sequence;
+      const expected = challenge.payload.sequence || [];
       const got = sessionResult.userSequence || [];
-      let hits = 0;
-      for (let i = 0; i < Math.min(expected.length, got.length); i++) {
-        if (expected[i] === got[i]) hits++;
-      }
-      const accuracy = expected.length > 0 ? Math.round((hits / expected.length) * 100) : 0;
-      return { score: Math.round(accuracy * 4 + challenge.difficulty * 35 + (accuracy === 100 ? 200 : 0)), accuracy };
+      const isCorrect = expected.length > 0 && expected.length === got.length && expected.every((val, i) => val === got[i]);
+      return { score: isCorrect ? Math.round(100 * 4 + challenge.difficulty * 35 + 200) : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
@@ -337,29 +380,25 @@ export const MemoryGames = {
       const totalCells = dimension * dimension;
       const shadedCount = (isHardMode ? 10 : 5) + Math.min(difficulty, 7);
 
-      const shadedIndices = new Set();
-      while (shadedIndices.size < Math.min(shadedCount, totalCells - 4)) {
-        shadedIndices.add(prng.nextRange(0, totalCells - 1));
+      const shadedSet = new Set();
+      while (shadedSet.size < Math.min(shadedCount, totalCells - 4)) {
+        shadedSet.add(prng.nextRange(0, totalCells - 1));
       }
+      const targetGrid = Array.from(shadedSet);
 
       return {
         dimension,
-        shadedIndices: Array.from(shadedIndices),
+        targetGrid,
+        shadedIndices: targetGrid,
         studyDurationMs: Math.max(1500, (isHardMode ? 2000 : 3500) - difficulty * 200),
         displayDurationMs: Math.max(1500, (isHardMode ? 2000 : 3500) - difficulty * 200),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const targets = new Set(challenge.payload.shadedIndices);
-      const userSelected = new Set(sessionResult.shadedIndices || []);
-      let hits = 0;
-      let falsePositives = 0;
-
-      targets.forEach(t => { if (userSelected.has(t)) hits++; });
-      userSelected.forEach(s => { if (!targets.has(s)) falsePositives++; });
-
-      const accuracy = targets.size > 0 ? Math.round((hits / targets.size) * 100) : 0;
-      return { score: Math.max(0, hits * 100 - falsePositives * 55 + challenge.difficulty * 35), accuracy };
+      const targets = new Set(challenge.payload.targetGrid || challenge.payload.shadedIndices || []);
+      const userSelected = new Set(sessionResult.shadedIndices || sessionResult.targetGrid || []);
+      const isCorrect = targets.size > 0 && targets.size === userSelected.size && [...targets].every(t => userSelected.has(t));
+      return { score: isCorrect ? Math.round(targets.size * 100 + challenge.difficulty * 35) : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 };

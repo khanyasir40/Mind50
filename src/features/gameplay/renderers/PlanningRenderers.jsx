@@ -33,12 +33,7 @@ export const WisconsinCardRenderer = ({ challenge, onRespond }) => {
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-        Deduce the hidden rule (Color / Shape / Count) and sort the card:
-        {challenge.payload.ruleHint && (
-          <span style={{ color: 'var(--accent-primary)', fontWeight: '800', marginLeft: '6px' }}>
-            (Hint: {challenge.payload.ruleHint})
-          </span>
-        )}
+        Deduce the hidden rule (Color / Shape / Count) by sorting the card:
       </div>
 
       {/* Active Card */}

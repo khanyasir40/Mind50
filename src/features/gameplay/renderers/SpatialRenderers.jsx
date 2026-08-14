@@ -99,7 +99,7 @@ export const MentalRotationRenderer = ({ challenge, onRespond }) => {
 };
 
 // GAME 38: BLOCK DESIGN RECONSTRUCTION (Tile Matching Canvas)
-export const BlockDesignRenderer = ({ challenge, onRespond }) => {
+export const BlockDesignRenderer = ({ challenge, trialPhase, onRespond }) => {
   const dim = challenge.payload.dimension || 2;
   const targetPattern = challenge.payload.targetPattern || [];
   const tileTypes = ['SOLID_RED', 'SOLID_WHITE', 'SPLIT_DIAGONAL', 'SPLIT_ANTI_DIAGONAL'];
@@ -111,6 +111,7 @@ export const BlockDesignRenderer = ({ challenge, onRespond }) => {
   }, [challenge]);
 
   const cycleTile = (idx) => {
+    if (trialPhase !== 'input') return;
     const next = [...userPattern];
     const currentIdx = tileTypes.indexOf(next[idx]);
     next[idx] = tileTypes[(currentIdx + 1) % tileTypes.length];
@@ -154,39 +155,46 @@ export const BlockDesignRenderer = ({ challenge, onRespond }) => {
     );
   };
 
-  const cellSize = dim <= 2 ? 52 : 40;
+  const cellSize = dim <= 2 ? 60 : 45;
 
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-        Tap tiles to cycle through types and match the target:
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '28px', marginBottom: '24px', alignItems: 'flex-start' }}>
-        {/* Goal Pattern */}
-        <div>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Target Goal</span>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${dim}, 1fr)`, gap: '4px', padding: '8px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-primary)' }}>
+  if (trialPhase === 'show') {
+    return (
+      <div style={{ textAlign: 'center' }} className="animate-fade-in">
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 16px', background: 'var(--accent-primary-light)', color: 'var(--accent-primary)', borderRadius: 'var(--radius-full)', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '16px' }}>
+          Memorize the pattern (3 Seconds)
+        </div>
+        <div style={{ display: 'inline-block', padding: '16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '3px solid var(--accent-primary)', boxShadow: '0 0 30px rgba(108,77,255,0.25)' }}>
+          <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-tertiary)', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>TARGET GOAL</span>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${dim}, 1fr)`, gap: '6px' }}>
             {targetPattern.map((tile, i) => (
               <div key={i}>{renderTile(tile, null, cellSize)}</div>
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* Player Board */}
-        <div>
-          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--accent-primary)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Your Board</span>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${dim}, 1fr)`, gap: '4px', padding: '8px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '2px solid var(--accent-primary)' }}>
-            {userPattern.map((tile, i) => (
-              <div key={i}>{renderTile(tile, () => cycleTile(i), cellSize)}</div>
-            ))}
-          </div>
+  return (
+    <div style={{ textAlign: 'center' }} className="animate-fade-in">
+      <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+        Recreate the pattern from memory on Your Board (Tap tiles to cycle):
+      </div>
+
+      <div style={{ display: 'inline-block', padding: '16px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '2px solid var(--accent-primary)', marginBottom: '24px' }}>
+        <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--accent-primary)', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>YOUR BOARD</span>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${dim}, 1fr)`, gap: '6px' }}>
+          {userPattern.map((tile, i) => (
+            <div key={i}>{renderTile(tile, () => cycleTile(i), cellSize)}</div>
+          ))}
         </div>
       </div>
 
-      <NvButton variant="primary" size="lg" onClick={() => onRespond({ userPattern })} style={{ width: '100%', maxWidth: '240px' }}>
-        Submit Design
-      </NvButton>
+      <div>
+        <NvButton variant="primary" size="lg" onClick={() => onRespond({ userPattern })} style={{ width: '100%', maxWidth: '240px' }}>
+          Submit Design
+        </NvButton>
+      </div>
     </div>
   );
 };

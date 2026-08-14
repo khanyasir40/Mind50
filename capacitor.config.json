@@ -1,0 +1,8 @@
+{
+  "appId": "com.neurovault.mind50",
+  "appName": "Mind50",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
