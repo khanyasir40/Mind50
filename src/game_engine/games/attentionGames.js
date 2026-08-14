@@ -3,7 +3,7 @@
    ========================================================================== */
 
 export const AttentionGames = {
-  // GAME 11: STROOP SPRINT
+  // GAME 11: STROOP SPRINT — 12 Colors + Dynamic INK vs WORD Task Prompting
   stroop_sprint: {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const colors = [
@@ -13,39 +13,46 @@ export const AttentionGames = {
         { name: 'Yellow', hex: '#F0A83A' },
         { name: 'Purple', hex: '#A855F7' },
         { name: 'Orange', hex: '#F97316' },
+        { name: 'Pink', hex: '#EC4899' },
+        { name: 'Cyan', hex: '#06B6D4' },
+        { name: 'Brown', hex: '#92400E' },
+        { name: 'Teal', hex: '#14B8A6' },
+        { name: 'Magenta', hex: '#D946EF' },
+        { name: 'Lime', hex: '#84CC16' },
       ];
 
-      const pool = isHardMode ? colors : colors.slice(0, 4);
-      // Force incongruent (harder) in hard mode, allow congruent otherwise
-      let textItem, inkItem;
-      const forceIncongruent = isHardMode || prng.nextRange(0, 1) === 0;
+      const taskMode = prng.nextRange(0, 1) === 0 ? 'INK' : 'WORD';
+      const pool = prng.shuffle([...colors]);
 
-      textItem = pool[prng.nextRange(0, pool.length - 1)];
-      if (forceIncongruent) {
-        // Pick a different color for ink
-        const filtered = pool.filter(c => c.name !== textItem.name);
-        inkItem = filtered[prng.nextRange(0, filtered.length - 1)];
-      } else {
-        inkItem = textItem;
-      }
+      const textItem = pool[prng.nextRange(0, pool.length - 1)];
+      const filtered = pool.filter(c => c.name !== textItem.name);
+      const inkItem = filtered[prng.nextRange(0, filtered.length - 1)];
+
+      const correctAnswer = taskMode === 'INK' ? inkItem.name : textItem.name;
+      const wrongDistractors = pool.filter(c => c.name !== correctAnswer).map(c => c.name);
+      const options = prng.shuffle([correctAnswer, ...wrongDistractors.slice(0, 3)]);
 
       return {
+        taskMode, // 'INK' or 'WORD'
         wordText: textItem.name,
         inkColorHex: inkItem.hex,
         correctInkName: inkItem.name,
+        correctWordName: textItem.name,
+        correctAnswer,
         isIncongruent: textItem.name !== inkItem.name,
-        options: prng.shuffle(pool.map((c) => c.name)),
-        timeLimitMs: Math.max(700, (isHardMode ? 1300 : 2400) - difficulty * 150),
+        options,
+        timeLimitMs: Math.max(1200, (isHardMode ? 2200 : 3800) - difficulty * 150),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const isCorrect = sessionResult.selectedColor === challenge.payload.correctInkName;
+      const expected = challenge.payload.correctAnswer || challenge.payload.correctInkName;
+      const userSelected = sessionResult.selectedColor || sessionResult.userAnswer;
+      const isCorrect = userSelected === expected;
       const rtMs = sessionResult.reactionTimeMs || 1000;
-      // Incongruent trials worth more
       const incongruentBonus = challenge.payload.isIncongruent ? 80 : 0;
       const speedBonus = Math.max(0, 400 - Math.round(rtMs / 4));
       const score = isCorrect ? 300 + challenge.difficulty * 45 + speedBonus + incongruentBonus : 0;
-      return { score, accuracy: isCorrect ? 100 : 0 };
+      return { score, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
@@ -54,7 +61,6 @@ export const AttentionGames = {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const count = (isHardMode ? 12 : 6) + Math.min(difficulty, 6);
       const points = [];
-      // Ensure points don't overlap by using a grid-based placement approach
       const usedPositions = new Set();
       for (let i = 1; i <= count; i++) {
         let x, y, key;
@@ -62,7 +68,6 @@ export const AttentionGames = {
         do {
           x = prng.nextRange(8, 88);
           y = prng.nextRange(12, 82);
-          // Round to grid of 15 to avoid overlap
           const gx = Math.round(x / 15) * 15;
           const gy = Math.round(y / 15) * 15;
           key = `${gx},${gy}`;
@@ -81,9 +86,10 @@ export const AttentionGames = {
     calculateScore: (challenge, sessionResult) => {
       const totalTimeMs = sessionResult.trialTimeMs || sessionResult.totalTimeMs || 10000;
       const errors = sessionResult.errorCount || 0;
+      const isCorrect = errors < 5;
       const accuracy = Math.max(0, 100 - errors * 12);
-      const score = Math.max(100, Math.round(60000 / Math.max(totalTimeMs, 500)) * 12 - errors * 50);
-      return { score, accuracy };
+      const score = isCorrect ? Math.max(100, Math.round(60000 / Math.max(totalTimeMs, 500)) * 12 - errors * 50) : 0;
+      return { score, accuracy, isCorrect };
     },
   },
 
@@ -124,68 +130,100 @@ export const AttentionGames = {
     calculateScore: (challenge, sessionResult) => {
       const totalTimeMs = sessionResult.trialTimeMs || sessionResult.totalTimeMs || 15000;
       const errors = sessionResult.errorCount || 0;
+      const isCorrect = errors < 5;
       const accuracy = Math.max(0, 100 - errors * 12);
-      const score = Math.max(100, Math.round(75000 / Math.max(totalTimeMs, 500)) * 12 - errors * 50);
-      return { score, accuracy };
+      const score = isCorrect ? Math.max(100, Math.round(75000 / Math.max(totalTimeMs, 500)) * 12 - errors * 50) : 0;
+      return { score, accuracy, isCorrect };
     },
   },
 
-  // GAME 14: GO / NO-GO RESPONSE — with proper auto-timeout duration
+  // GAME 14: GO / NO-GO RESPONSE — Dynamic Arcade GO/NO-GO Traps & Bonuses
   go_no_go: {
     generateChallenge: (prng, difficulty, isHardMode) => {
       const isGo = prng.nextRange(0, 99) < (isHardMode ? 55 : 70);
-      const stimulus = isGo
-        ? { type: 'GO', color: '#39B982', shape: 'Circle', label: 'TAP!' }
-        : { type: 'NO_GO', color: '#E85D75', shape: 'Square', label: 'HOLD!' };
 
-      const durationMs = Math.max(400, (isHardMode ? 750 : 1300) - difficulty * 80);
+      const goStimuli = [
+        { type: 'GO', color: '#39B982', icon: '🟢', label: 'TAP FAST!' },
+        { type: 'GO', color: '#39B982', icon: '🚀', label: 'LAUNCH!' },
+        { type: 'GO', color: '#39B982', icon: '⚡', label: 'SURGE!' },
+      ];
+
+      const noGoStimuli = [
+        { type: 'NO_GO', color: '#E85D75', icon: '💀', label: 'DANGER!' },
+        { type: 'NO_GO', color: '#E85D75', icon: '💣', label: 'BOOM!' },
+        { type: 'NO_GO', color: '#E85D75', icon: '🛑', label: 'HALT!' },
+      ];
+
+      const stimulus = isGo
+        ? goStimuli[prng.nextRange(0, goStimuli.length - 1)]
+        : noGoStimuli[prng.nextRange(0, noGoStimuli.length - 1)];
+
+      const durationMs = Math.max(500, (isHardMode ? 850 : 1400) - difficulty * 80);
 
       return {
         stimulus,
         durationMs,
-        // No-go trials must auto-submit after duration elapses (handled by renderer)
-        autoSubmitAfterMs: durationMs + 200,
+        autoSubmitAfterMs: durationMs + 250,
       };
     },
     calculateScore: (challenge, sessionResult) => {
       const isGo = challenge.payload.stimulus.type === 'GO';
-      const didTap = sessionResult.userTapped;
+      const didTap = Boolean(sessionResult.userTapped);
       const isCorrect = (isGo && didTap) || (!isGo && !didTap);
       const rtMs = sessionResult.reactionTimeMs || 500;
       const speedBonus = isGo && isCorrect ? Math.max(0, 200 - Math.round(rtMs / 4)) : 0;
-      return { score: isCorrect ? 250 + challenge.difficulty * 35 + speedBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 250 + challenge.difficulty * 35 + speedBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 
-  // GAME 15: ERIKSEN FLANKER
+  // GAME 15: ERIKSEN FLANKER — 4-Way Directions (Up/Down/Left/Right) & Position Targets (LEFT, CENTER, RIGHT)
   flanker_task: {
     generateChallenge: (prng, difficulty, isHardMode) => {
-      const directions = ['left', 'right'];
-      const centerDir = directions[prng.nextRange(0, 1)];
-      const isCongruent = !isHardMode && prng.nextRange(0, 3) !== 0; // Hard mode is mostly incongruent
-      const flankerDir = isCongruent ? centerDir : (centerDir === 'left' ? 'right' : 'left');
+      const directions = ['left', 'right', 'up', 'down'];
+      const positions = ['LEFT', 'CENTER', 'RIGHT'];
+      const targetPos = positions[prng.nextRange(0, positions.length - 1)];
 
-      const symbolMap = { left: '←', right: '→' };
-      const flankerCount = isHardMode ? 4 : 2;
-      const flankersLeft = Array(flankerCount).fill(symbolMap[flankerDir]).join(' ');
-      const flankersRight = Array(flankerCount).fill(symbolMap[flankerDir]).join(' ');
+      const themes = [
+        { name: 'arrows', map: { up: '↑', down: '↓', left: '←', right: '→' } },
+        { name: 'jets', map: { up: '🚀', down: '🛬', left: '✈️', right: '🛩️' } },
+        { name: 'fish', map: { up: '🐬', down: '🪼', left: '🐟', right: '🐠' } },
+        { name: 'hands', map: { up: '👆', down: '👇', left: '👈', right: '👉' } },
+      ];
+      const theme = themes[prng.nextRange(0, themes.length - 1)];
 
-      const displayString = `${flankersLeft} ${symbolMap[centerDir]} ${flankersRight}`;
+      const targetDir = directions[prng.nextRange(0, directions.length - 1)];
+      const flankerDir = isHardMode
+        ? directions[prng.nextRange(0, directions.length - 1)]
+        : (prng.nextRange(0, 1) === 0 ? targetDir : directions.filter(d => d !== targetDir)[prng.nextRange(0, 2)]);
+
+      // Create 5 items: indices 0 (LEFT), 1, 2 (CENTER), 3, 4 (RIGHT)
+      const items = Array.from({ length: 5 }, (_, idx) => {
+        if (targetPos === 'LEFT' && idx === 0) return { dir: targetDir, symbol: theme.map[targetDir] };
+        if (targetPos === 'CENTER' && idx === 2) return { dir: targetDir, symbol: theme.map[targetDir] };
+        if (targetPos === 'RIGHT' && idx === 4) return { dir: targetDir, symbol: theme.map[targetDir] };
+        return { dir: flankerDir, symbol: theme.map[flankerDir] };
+      });
+
+      const displayString = items.map(i => i.symbol).join(' ');
 
       return {
+        items,
+        theme: theme.name,
+        targetPosition: targetPos, // 'LEFT', 'CENTER', or 'RIGHT'
+        targetDirection: targetDir,
+        correctDirection: targetDir,
         displayString,
-        correctDirection: centerDir,
-        isCongruent,
-        flankerCount,
-        timeLimitMs: Math.max(450, (isHardMode ? 850 : 1700) - difficulty * 110),
+        isCongruent: targetDir === flankerDir,
+        timeLimitMs: Math.max(1200, (isHardMode ? 2200 : 3800) - difficulty * 110),
       };
     },
     calculateScore: (challenge, sessionResult) => {
-      const isCorrect = sessionResult.selectedDirection === challenge.payload.correctDirection;
+      const expected = challenge.payload.correctDirection || challenge.payload.targetDirection;
+      const isCorrect = sessionResult.selectedDirection === expected;
       const rtMs = sessionResult.reactionTimeMs || 800;
       const incongruentBonus = !challenge.payload.isCongruent ? 60 : 0;
       const speedBonus = Math.max(0, 320 - Math.round(rtMs / 3));
-      return { score: isCorrect ? 280 + challenge.difficulty * 40 + speedBonus + incongruentBonus : 0, accuracy: isCorrect ? 100 : 0 };
+      return { score: isCorrect ? 280 + challenge.difficulty * 40 + speedBonus + incongruentBonus : 0, accuracy: isCorrect ? 100 : 0, isCorrect };
     },
   },
 

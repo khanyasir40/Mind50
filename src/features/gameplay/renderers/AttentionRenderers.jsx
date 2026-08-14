@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NvButton } from '../../../components/ui/NvButton';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
-// GAME 11: STROOP SPRINT
+// GAME 11: STROOP SPRINT — 12-Color + Dynamic INK vs WORD Prompting
 export const StroopRenderer = ({ challenge, onRespond }) => {
   const startRef = useRef(Date.now());
+  const taskMode = challenge.payload.taskMode || 'INK';
 
   useEffect(() => {
     startRef.current = Date.now();
@@ -12,16 +13,20 @@ export const StroopRenderer = ({ challenge, onRespond }) => {
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-        Select the <strong style={{ color: 'var(--accent-primary)' }}>INK COLOR</strong> — ignore the word!
+      <div style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '12px', fontWeight: '800' }}>
+        {taskMode === 'INK' ? (
+          <>Match the <strong style={{ color: 'var(--accent-primary)', fontSize: '17px', textDecoration: 'underline' }}>INK COLOR</strong> — ignore the text!</>
+        ) : (
+          <>Match the <strong style={{ color: 'var(--color-warning)', fontSize: '17px', textDecoration: 'underline' }}>WORD TEXT</strong> — ignore the ink!</>
+        )}
       </div>
       <div
         style={{
-          fontSize: '72px',
+          fontSize: '68px',
           fontWeight: '900',
           color: challenge.payload.inkColorHex,
           textTransform: 'uppercase',
-          marginBottom: '36px',
+          marginBottom: '32px',
           textShadow: `0 0 30px ${challenge.payload.inkColorHex}66`,
           letterSpacing: '2px',
         }}
@@ -31,7 +36,7 @@ export const StroopRenderer = ({ challenge, onRespond }) => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: challenge.payload.options.length > 4 ? '1fr 1fr 1fr' : '1fr 1fr',
+          gridTemplateColumns: '1fr 1fr',
           gap: '12px',
           maxWidth: '380px',
           margin: '0 auto',
@@ -186,16 +191,16 @@ export const TrailMakingRenderer = ({ challenge, onRespond }) => {
   );
 };
 
-// GAME 14: GO / NO-GO RESPONSE — FIXED: auto-timeout for NO_GO trials
+// GAME 14: GO / NO-GO RESPONSE — Arcade Target Ring & Energy Blast Feedback
 export const GoNoGoRenderer = ({ challenge, onRespond }) => {
   const hasResponded = useRef(false);
-  const stimulus = challenge.payload.stimulus;
-  const durationMs = challenge.payload.autoSubmitAfterMs || (challenge.payload.durationMs + 200) || 1600;
+  const stimulus = challenge.payload.stimulus || { type: 'GO', color: '#39B982', icon: '🟢', label: 'TAP FAST!' };
+  const durationMs = challenge.payload.autoSubmitAfterMs || (challenge.payload.durationMs + 250) || 1600;
+  const isGo = stimulus.type === 'GO';
 
   useEffect(() => {
     hasResponded.current = false;
 
-    // Auto-submit NO_GO after duration (no tap = correct for NO_GO)
     const timer = setTimeout(() => {
       if (!hasResponded.current) {
         hasResponded.current = true;
@@ -214,33 +219,40 @@ export const GoNoGoRenderer = ({ challenge, onRespond }) => {
 
   return (
     <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', fontWeight: '800' }}>
+        {isGo ? '⚡ TARGET DETECTED — TAP INSTANTLY!' : '🛑 HAZARD WARNING — HOLD & DO NOT TAP!'}
+      </div>
       <div
         onClick={handleTap}
         style={{
-          height: '240px',
-          borderRadius: 'var(--radius-xl)',
-          background: stimulus.color,
+          width: '260px',
+          height: '260px',
+          margin: '0 auto 20px',
+          borderRadius: '50%',
+          background: isGo ? 'radial-gradient(circle, #39B982 0%, rgba(57,185,130,0.85) 100%)' : 'radial-gradient(circle, #E85D75 0%, rgba(232,93,117,0.85) 100%)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           color: '#FFFFFF',
-          cursor: stimulus.type === 'GO' ? 'pointer' : 'not-allowed',
-          boxShadow: `0 10px 30px ${stimulus.color}66`,
-          animation: 'fadeInScale 0.15s ease-out',
+          cursor: isGo ? 'pointer' : 'not-allowed',
+          boxShadow: isGo ? '0 0 40px rgba(57,185,130,0.6)' : '0 0 40px rgba(232,93,117,0.6)',
+          border: isGo ? '4px solid #FFFFFF' : '4px solid #FFE5E5',
           userSelect: 'none',
+          transition: 'all 0.15s ease',
         }}
       >
-        <span style={{ fontSize: '56px', fontWeight: '900' }}>{stimulus.label}</span>
-        <span style={{ fontSize: '15px', opacity: 0.9, marginTop: '10px', fontWeight: '600' }}>
-          {stimulus.type === 'GO' ? '👆 Tap the screen!' : '🛑 Do NOT tap!'}
+        <span style={{ fontSize: '64px', marginBottom: '4px' }}>{stimulus.icon || (isGo ? '🟢' : '🛑')}</span>
+        <span style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '1px' }}>{stimulus.label || (isGo ? 'TAP!' : 'HOLD!')}</span>
+        <span style={{ fontSize: '12px', opacity: 0.9, marginTop: '4px', fontWeight: '700' }}>
+          {isGo ? '👆 TOUCH ANYWHERE!' : '🛡️ DO NOT TOUCH!'}
         </span>
       </div>
     </div>
   );
 };
 
-// GAME 15: ERIKSEN FLANKER
+// GAME 15: ERIKSEN FLANKER — 4-Way Direction Controls & Position Target Focal Box
 export const FlankerRenderer = ({ challenge, onRespond }) => {
   const startRef = useRef(Date.now());
 
@@ -248,37 +260,96 @@ export const FlankerRenderer = ({ challenge, onRespond }) => {
     startRef.current = Date.now();
   }, [challenge]);
 
+  const items = challenge.payload.items || [];
+  const targetPos = challenge.payload.targetPosition || 'CENTER'; // 'LEFT', 'CENTER', or 'RIGHT'
+
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-        Which direction is the <strong style={{ color: 'var(--accent-primary)' }}>CENTER</strong> arrow?
+      <div style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '16px', fontWeight: '800' }}>
+        Which direction is the <strong style={{ color: 'var(--accent-primary)', fontSize: '18px', textDecoration: 'underline' }}>{targetPos}</strong> item pointing?
       </div>
+
+      {/* Target Row with Focal Box around targetPos */}
       <div
         style={{
-          fontSize: '54px',
-          fontWeight: '900',
-          color: 'var(--accent-primary)',
-          letterSpacing: '14px',
-          marginBottom: '44px',
-          textShadow: '0 0 20px rgba(108,77,255,0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px',
+          padding: '16px',
+          background: 'var(--bg-surface)',
+          borderRadius: 'var(--radius-xl)',
+          border: '1px solid var(--border-light)',
+          maxWidth: '420px',
+          margin: '0 auto 36px',
         }}
       >
-        {challenge.payload.displayString}
+        {items.map((item, idx) => {
+          const isTarget =
+            (targetPos === 'LEFT' && idx === 0) ||
+            (targetPos === 'CENTER' && idx === 2) ||
+            (targetPos === 'RIGHT' && idx === 4);
+
+          return (
+            <div
+              key={idx}
+              style={{
+                width: isTarget ? '64px' : '48px',
+                height: isTarget ? '64px' : '48px',
+                borderRadius: '14px',
+                background: isTarget ? 'linear-gradient(135deg, var(--accent-primary), #A855F7)' : 'var(--bg-base)',
+                color: isTarget ? '#FFFFFF' : 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: isTarget ? '32px' : '22px',
+                fontWeight: '900',
+                boxShadow: isTarget ? '0 0 24px rgba(108,77,255,0.6)' : 'none',
+                border: isTarget ? '3px solid #FFFFFF' : '1px solid var(--border-light)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {item.symbol}
+            </div>
+          );
+        })}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '320px', margin: '0 auto' }}>
+
+      {/* 4-Way Direction Controls (Up, Left, Right, Down) */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', maxWidth: '300px', margin: '0 auto' }}>
         <NvButton
           variant="primary"
-          size="lg"
-          onClick={() => onRespond({ selectedDirection: 'left', reactionTimeMs: Date.now() - startRef.current })}
+          size="md"
+          onClick={() => onRespond({ selectedDirection: 'up', reactionTimeMs: Date.now() - startRef.current })}
+          style={{ width: '120px' }}
         >
-          <ArrowLeft size={24} /> Left
+          ▲ UP
         </NvButton>
+        <div style={{ display: 'flex', gap: '12px', width: '100%', justifyContent: 'center' }}>
+          <NvButton
+            variant="primary"
+            size="md"
+            onClick={() => onRespond({ selectedDirection: 'left', reactionTimeMs: Date.now() - startRef.current })}
+            style={{ flex: 1 }}
+          >
+            ◀ LEFT
+          </NvButton>
+          <NvButton
+            variant="primary"
+            size="md"
+            onClick={() => onRespond({ selectedDirection: 'right', reactionTimeMs: Date.now() - startRef.current })}
+            style={{ flex: 1 }}
+          >
+            RIGHT ▶
+          </NvButton>
+        </div>
         <NvButton
           variant="primary"
-          size="lg"
-          onClick={() => onRespond({ selectedDirection: 'right', reactionTimeMs: Date.now() - startRef.current })}
+          size="md"
+          onClick={() => onRespond({ selectedDirection: 'down', reactionTimeMs: Date.now() - startRef.current })}
+          style={{ width: '120px' }}
         >
-          Right <ArrowRight size={24} />
+          ▼ DOWN
         </NvButton>
       </div>
     </div>

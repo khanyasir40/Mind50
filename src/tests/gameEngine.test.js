@@ -40,7 +40,7 @@ export async function runAllEngineTests() {
       const correctSession = {
         userInput: p.expected || p.correctAnswer,
         userAnswer: p.correctAnswer || p.expected || (p.nextValue !== undefined ? p.nextValue : undefined),
-        selectedColor: p.correctInkName || p.targetColor?.name || subP.correctInkName,
+        selectedColor: p.correctAnswer || p.correctInkName || p.targetColor?.name || subP.correctInkName,
         selectedId: p.correctOptionId || p.changedItemId,
         selectedIndex: p.targetIndex !== undefined ? p.targetIndex : p.oddIndex,
         selectedOption: p.correctOption || p.correctAnswer || p.correctNext,
